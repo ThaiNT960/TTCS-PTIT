@@ -1,0 +1,66 @@
+package com.example.ptitsocialchat.controller;
+
+import com.example.ptitsocialchat.dto.FriendRequestDTO;
+import com.example.ptitsocialchat.entity.User;
+import com.example.ptitsocialchat.service.FriendService;
+import com.example.ptitsocialchat.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/friends")
+public class FriendController {
+    @Autowired
+    private FriendService friendService;
+    @Autowired
+    private UserService userService;
+
+    @PostMapping("/request")
+    public ResponseEntity<?> sendFriendRequest(@RequestBody Map<String, String> request) {
+        String senderUsername = request.get("senderUsername");
+        String receiverUsername = request.get("receiverUsername");
+        User sender = userService.findByUsername(senderUsername).orElseThrow();
+        User receiver = userService.findByUsername(receiverUsername).orElseThrow();
+        friendService.sendRequest(sender, receiver);
+        return ResponseEntity.ok("Friend request sent");
+    }
+
+    @PostMapping("/accept/{requestId}")
+    public ResponseEntity<?> acceptFriendRequest(@PathVariable Long requestId) {
+        friendService.acceptRequest(requestId);
+        return ResponseEntity.ok("Friend request accepted");
+    }
+
+    @PostMapping("/reject/{requestId}")
+    public ResponseEntity<?> rejectFriendRequest(@PathVariable Long requestId) {
+        friendService.rejectRequest(requestId);
+        return ResponseEntity.ok("Friend request rejected");
+    }
+
+    @GetMapping
+    public List<User> getFriends(@RequestParam String username) {
+        User user = userService.findByUsername(username).orElseThrow();
+        return friendService.getFriends(user);
+    }
+
+    @GetMapping("/requests")
+    public List<FriendRequestDTO> getPendingRequests(@RequestParam String username) {
+        User user = userService.findByUsername(username).orElseThrow();
+        return friendService.getPendingRequests(user).stream()
+                .map(req -> {
+                    FriendRequestDTO dto = new FriendRequestDTO();
+                    dto.setId(req.getId());
+                    dto.setSenderUsername(req.getSender().getUsername());
+                    dto.setSenderFullName(req.getSender().getFullName());
+                    dto.setStatus(req.getStatus());
+                    dto.setCreatedAt(req.getCreatedAt());
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+}

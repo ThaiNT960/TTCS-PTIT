@@ -1,0 +1,118 @@
+/* Minimal custom CSS — Tailwind handles the rest */
+
+/* Nav link active/hover styles */
+.nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 9999px;
+    text-decoration: none;
+    color: #555;
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+
+.nav-link:hover {
+    background: rgba(174, 26, 33, 0.08);
+    color: #ae1a21;
+}
+
+.nav-link.active {
+    background: #ae1a21;
+    color: #fff;
+}
+
+/* Tab button active state */
+.tab-btn {
+    border: none;
+    background: transparent;
+    color: #666;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s, color 0.15s;
+}
+
+.tab-btn:hover {
+    background: #f3f4f6;
+    color: #1a1a1a;
+}
+
+.tab-btn.active {
+    background: #fff;
+    color: #1a1a1a;
+    font-weight: 600;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.10);
+}
+
+/* Tailwind primary color utility classes */
+.text-primary {
+    color: #ae1a21 !important;
+}
+
+.bg-primary {
+    background-color: #ae1a21 !important;
+}
+
+.hover\:bg-primary-dark:hover {
+    background-color: #8a141a !important;
+}
+
+.border-primary {
+    border-color: #ae1a21 !important;
+}
+
+.focus\:border-primary:focus {
+    border-color: #ae1a21 !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
+/* FAB */
+.fab-chat {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    z-index: 900;
+}
+
+/* No-underline helper */
+.no-underline {
+    text-decoration: none !important;
+}
+
+/* Smooth fade-in for cards */
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-up {
+    animation: fadeUp 0.2s ease-out;
+}

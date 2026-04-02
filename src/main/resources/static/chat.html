@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PTIT Social - Tin Nhắn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { primary: '#ae1a21', 'primary-dark': '#8a141a' }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <link rel="stylesheet" href="css/app.css">
+</head>
+
+<body class="bg-gray-100 font-sans text-gray-900">
+
+    <!-- NAVBAR -->
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm" style="height:60px">
+        <div class="max-w-5xl mx-auto px-5 h-full flex items-center justify-between gap-4">
+            <a href="home.html"
+                class="flex items-center gap-2 text-primary font-bold text-lg flex-shrink-0 no-underline">
+                <img src="/img/logo_ptit.svg" alt="PTIT Logo" class="w-10 h-10 object-contain">
+                PTIT Social
+            </a>
+            <div class="flex items-center gap-1">
+                <a href="home.html" class="nav-link"><i class="fas fa-home"></i> Trang chủ</a>
+                <a href="friend.html" class="nav-link"><i class="fas fa-user-friends"></i> Bạn bè</a>
+                <a href="chat.html" class="nav-link active"><i class="fas fa-comment-dots"></i> Tin nhắn</a>
+            </div>
+            <div class="flex items-center gap-3 flex-shrink-0 relative">
+                <div class="relative" id="navAvatarWrap">
+                    <button onclick="toggleUserMenu()"
+                        class="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-bold focus:outline-none"
+                        id="navAvatar">T</button>
+                    <div id="userMenu"
+                        class="hidden absolute right-0 top-12 bg-white border border-gray-200 rounded-xl shadow-lg w-44 overflow-hidden z-50">
+                        <a href="profile.html"
+                            class="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"><i
+                                class="fas fa-user text-primary w-4"></i> Trang cá nhân</a>
+                        <a href="#" onclick="logout()"
+                            class="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"><i
+                                class="fas fa-sign-out-alt text-primary w-4"></i> Đăng xuất</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-20 pb-0" style="height:100vh;overflow:hidden">
+        <div class="max-w-5xl mx-auto px-4 h-full pb-4">
+            <div class="bg-white rounded-2xl shadow-sm flex overflow-hidden" style="height:calc(100vh - 88px)">
+
+                <!-- Sidebar -->
+                <div class="w-72 flex-shrink-0 border-r border-gray-100 flex flex-col">
+                    <div class="px-5 py-4 border-b border-gray-100">
+                        <h2 class="text-lg font-bold text-gray-900">Tin nhắn</h2>
+                    </div>
+                    <div id="friendsList" class="flex-1 overflow-y-auto p-2">
+                        <p class="text-center text-gray-400 text-sm py-8">Đang tải...</p>
+                    </div>
+                </div>
+
+                <!-- Chat Window -->
+                <div class="flex-1 flex flex-col overflow-hidden">
+                    <!-- Header -->
+                    <div id="chatWindowHeader"
+                        class="hidden px-5 py-3.5 border-b border-gray-100 flex items-center gap-3 flex-shrink-0">
+                        <div id="chatPartnerAvatar"
+                            class="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white font-bold text-sm">
+                            ?</div>
+                        <span id="chatTitle" class="font-semibold text-gray-900"></span>
+                    </div>
+
+                    <!-- Messages -->
+                    <div id="chatMessages" class="flex-1 overflow-y-auto p-5 bg-gray-50 flex flex-col gap-1">
+                        <div class="flex flex-col items-center justify-center h-full text-gray-400 gap-3">
+                            <i class="fas fa-comment-dots text-5xl opacity-30"></i>
+                            <p class="text-sm">Chọn một cuộc hội thoại để bắt đầu</p>
+                        </div>
+                    </div>
+
+                    <!-- Input -->
+                    <div id="chatInputArea" class="hidden px-4 py-3 border-t border-gray-100 bg-white flex-shrink-0">
+                        <form id="messageForm" class="flex items-center gap-3">
+                            <input type="text" id="messageInput" autocomplete="off"
+                                class="flex-1 bg-gray-100 border border-transparent rounded-full px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:bg-white transition"
+                                placeholder="Nhập tin nhắn...">
+                            <button type="submit"
+                                class="w-10 h-10 bg-primary hover:bg-primary-dark text-white rounded-full flex items-center justify-center flex-shrink-0 transition">
+                                <i class="fas fa-paper-plane text-sm"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/auth.js"></script>
+    <script src="js/chat.js"></script>
+    <script>
+        function toggleUserMenu() { document.getElementById('userMenu').classList.toggle('hidden'); }
+        document.addEventListener('click', function (e) {
+            if (!document.getElementById('navAvatarWrap').contains(e.target)) document.getElementById('userMenu').classList.add('hidden');
+        });
+    </script>
+</body>
+
+</html>

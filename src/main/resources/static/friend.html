@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PTIT Social - Bạn Bè</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { primary: '#ae1a21', 'primary-dark': '#8a141a' }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/app.css">
+</head>
+
+<body class="bg-gray-100 font-sans text-gray-900">
+
+    <!-- NAVBAR -->
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm" style="height:60px">
+        <div class="max-w-5xl mx-auto px-5 h-full flex items-center justify-between gap-4">
+            <a href="home.html"
+                class="flex items-center gap-2 text-primary font-bold text-lg flex-shrink-0 no-underline">
+                <img src="/img/logo_ptit.svg" alt="PTIT Logo" class="w-10 h-10 object-contain">
+                PTIT Social
+            </a>
+            <div class="flex items-center gap-1">
+                <a href="home.html" class="nav-link"><i class="fas fa-home"></i> Trang chủ</a>
+                <a href="friend.html" class="nav-link active"><i class="fas fa-user-friends"></i> Bạn bè</a>
+                <a href="chat.html" class="nav-link"><i class="fas fa-comment-dots"></i> Tin nhắn</a>
+            </div>
+            <div class="flex items-center gap-3 flex-shrink-0 relative">
+                <div class="relative" id="navAvatarWrap">
+                    <button onclick="toggleUserMenu()"
+                        class="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-bold focus:outline-none"
+                        id="navAvatar">T</button>
+                    <div id="userMenu"
+                        class="hidden absolute right-0 top-12 bg-white border border-gray-200 rounded-xl shadow-lg w-44 overflow-hidden z-50">
+                        <a href="profile.html"
+                            class="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"><i
+                                class="fas fa-user text-primary w-4"></i> Trang cá nhân</a>
+                        <a href="#" onclick="logout()"
+                            class="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"><i
+                                class="fas fa-sign-out-alt text-primary w-4"></i> Đăng xuất</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-20 pb-10">
+        <div class="max-w-3xl mx-auto px-4">
+
+            <!-- Header -->
+            <div class="bg-white rounded-2xl shadow-sm p-6 mb-4">
+                <h1 class="text-2xl font-bold text-gray-900">Bạn bè</h1>
+            </div>
+
+            <!-- Tabs -->
+            <div class="bg-white rounded-2xl shadow-sm p-2 mb-4 flex gap-1">
+                <button class="tab-btn active flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+                    onclick="switchTab('friends', this)">Danh sách bạn bè</button>
+                <button class="tab-btn flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+                    onclick="switchTab('requests', this)">Lời mời kết bạn</button>
+                <button class="tab-btn flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+                    onclick="switchTab('search', this)">Tìm kiếm</button>
+            </div>
+
+            <!-- Friends List -->
+            <div id="tab-friends" class="bg-white rounded-2xl shadow-sm p-6">
+                <div id="friendsList">
+                    <p class="text-center text-gray-400 text-sm py-6">Đang tải...</p>
+                </div>
+            </div>
+
+            <!-- Requests -->
+            <div id="tab-requests" class="bg-white rounded-2xl shadow-sm p-6 hidden">
+                <div id="friendRequests">
+                    <p class="text-center text-gray-400 text-sm py-6">Đang tải...</p>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <div id="tab-search" class="bg-white rounded-2xl shadow-sm p-6 hidden">
+                <div class="flex gap-3 mb-5">
+                    <input type="text" id="searchInput"
+                        class="flex-1 border border-gray-200 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition"
+                        placeholder="Tìm kiếm người dùng..." onkeyup="if(event.key==='Enter') searchFriend()">
+                    <button onclick="searchFriend()"
+                        class="bg-primary hover:bg-primary-dark text-white text-sm font-semibold px-5 py-2 rounded-full transition">
+                        <i class="fas fa-search"></i> Tìm
+                    </button>
+                </div>
+                <div id="searchResults"></div>
+            </div>
+
+        </div>
+    </main>
+
+    <a href="chat.html"
+        class="fixed bottom-7 right-7 bg-primary hover:bg-primary-dark text-white rounded-full flex items-center justify-center text-xl shadow-lg transition z-40"
+        style="width:52px;height:52px">
+        <i class="fas fa-comment-dots"></i>
+    </a>
+
+    <script src="js/auth.js"></script>
+    <script src="js/friend.js"></script>
+    <script>
+        function toggleUserMenu() { document.getElementById('userMenu').classList.toggle('hidden'); }
+        document.addEventListener('click', function (e) {
+            if (!document.getElementById('navAvatarWrap').contains(e.target)) document.getElementById('userMenu').classList.add('hidden');
+        });
+        function switchTab(tab, btn) {
+            ['friends', 'requests', 'search'].forEach(t => {
+                document.getElementById('tab-' + t).classList.add('hidden');
+            });
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.remove('hidden');
+            btn.classList.add('active');
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PTIT Social Chat - Đăng Ký</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        :root {
+            --ptit-red: #C8102E;
+        }
+        .bg-ptit-red {
+            background: linear-gradient(135deg, #C8102E 0%, #A00824 100%);
+        }
+        .border-ptit-red {
+            border-color: #C8102E;
+        }
+        .text-ptit-red {
+            color: #C8102E;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+        <div class="bg-white rounded-lg shadow-2xl p-8 border-t-4 border-ptit-red">
+            <div class="text-center mb-8">
+                <div class="inline-block bg-ptit-red text-white rounded-full w-16 h-16 flex items-center justify-center mb-4">
+                    <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"></path>
+                    </svg>
+                </div>
+                <h1 class="text-3xl font-bold text-ptit-red">PTIT Social Chat</h1>
+                <p class="text-gray-600 mt-2 text-sm">Tạo tài khoản mới</p>
+            </div>
+
+            <form id="registerForm" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2 text-sm">Tên đăng nhập</label>
+                    <input type="text" id="username" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-ptit-red transition" placeholder="Nhập tên đăng nhập" required>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2 text-sm">Họ và tên</label>
+                    <input type="text" id="fullName" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-ptit-red transition" placeholder="Nhập họ và tên" required>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2 text-sm">Mật khẩu</label>
+                    <input type="password" id="password" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-ptit-red transition" placeholder="Nhập mật khẩu" required>
+                </div>
+
+                <button type="submit" class="w-full bg-ptit-red text-white font-semibold py-3 rounded-lg hover:bg-opacity-90 transition shadow-lg">Đăng Ký</button>
+            </form>
+
+            <div class="mt-6 text-center">
+                <p class="text-gray-600 text-sm">Đã có tài khoản? <a href="login.html" class="text-ptit-red font-semibold hover:underline">Đăng nhập</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+</body>
+</html>
