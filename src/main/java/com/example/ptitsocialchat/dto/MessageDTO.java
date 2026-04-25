@@ -5,9 +5,11 @@ import java.time.LocalDateTime;
 public class MessageDTO {
     private Long id;
     private String content;
+    private String imageUrl; // Thêm imageUrl
     private LocalDateTime timestamp;
     private String senderUsername;
-    private String receiverUsername;
+    private String receiverUsername; // Thêm lại để tương thích frontend
+    private Long conversationId;
 
     // Getters and Setters
     public Long getId() {
@@ -24,6 +26,14 @@ public class MessageDTO {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 
     public LocalDateTime getTimestamp() {
@@ -48,5 +58,13 @@ public class MessageDTO {
 
     public void setReceiverUsername(String receiverUsername) {
         this.receiverUsername = receiverUsername;
+    }
+
+    public Long getConversationId() {
+        return conversationId;
+    }
+
+    public void setConversationId(Long conversationId) {
+        this.conversationId = conversationId;
     }
 }

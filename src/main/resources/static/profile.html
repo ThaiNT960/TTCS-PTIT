@@ -56,75 +56,152 @@
 
     <!-- Cover Photo -->
     <div class="pt-15" style="padding-top:60px">
-        <div class="h-48 bg-gradient-to-br from-primary via-red-700 to-primary-dark"></div>
+        <div id="profileCover" class="h-64 bg-gradient-to-br from-primary via-red-700 to-primary-dark relative overflow-hidden">
+            <!-- Cover image will be injected here -->
+        </div>
     </div>
 
     <!-- Profile Content -->
-    <div class="max-w-2xl mx-auto px-4 pb-10" style="margin-top:-48px; position:relative; z-index:10">
+    <div class="max-w-4xl mx-auto px-4 pb-10" style="margin-top:-64px; position:relative; z-index:10">
 
         <!-- Profile Card -->
-        <div class="bg-white rounded-2xl shadow-sm p-5 mb-4 flex items-end gap-4">
-            <!-- Avatar -->
-            <div class="relative flex-shrink-0" style="margin-top:-64px">
-                <div id="profileAvatar"
-                    class="w-24 h-24 bg-primary rounded-full border-4 border-white flex items-center justify-center text-white font-bold text-3xl overflow-hidden">
-                    T</div>
-            </div>
-            <!-- Info -->
-            <div class="flex-1 flex items-center justify-between gap-4 pt-2 min-w-0">
-                <div class="min-w-0">
-                    <h2 id="profileName" class="text-xl font-bold text-gray-900 truncate">Đang tải...</h2>
-                    <p id="profileUsername" class="text-gray-500 text-sm mt-0.5">@username</p>
+        <div class="bg-white rounded-2xl shadow-sm p-6 mb-6">
+            <div class="flex flex-col md:flex-row items-center md:items-end gap-5">
+                <!-- Avatar -->
+                <div class="relative flex-shrink-0" style="margin-top:-80px">
+                    <div id="profileAvatar"
+                        class="w-32 h-32 bg-primary rounded-full border-4 border-white shadow-md flex items-center justify-center text-white font-bold text-4xl overflow-hidden">
+                        T</div>
                 </div>
-                <button onclick="document.getElementById('editModal').classList.remove('hidden')"
-                    class="flex items-center gap-2 border border-gray-200 rounded-full px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition flex-shrink-0">
-                    <i class="fas fa-pen"></i> Chỉnh sửa
-                </button>
+                <!-- Info -->
+                <div class="flex-1 text-center md:text-left pt-2 min-w-0">
+                    <h2 id="profileName" class="text-2xl font-bold text-gray-900 truncate">Đang tải...</h2>
+                    <p id="profileUsername" class="text-gray-500 font-medium">@username</p>
+                    <p id="profileBio" class="mt-2 text-gray-700 text-sm max-w-lg"></p>
+                </div>
+                <div id="profileActionArea" class="flex-shrink-0 flex items-center gap-2 mt-4 md:mt-0">
+                    <button onclick="document.getElementById('editModal').classList.remove('hidden')"
+                        class="flex items-center gap-2 border border-gray-200 rounded-full px-5 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition shadow-sm">
+                        <i class="fas fa-pen"></i> Chỉnh sửa
+                    </button>
+                </div>
+            </div>
+
+            <!-- Detail Info Chips -->
+            <div id="profileDetails" class="mt-6 flex flex-wrap justify-center md:justify-start gap-4 text-sm text-gray-600 border-t border-gray-50 pt-5">
+                <!-- Details will be injected here -->
             </div>
         </div>
 
-        <!-- Posts label -->
-        <h3 class="text-base font-semibold text-gray-800 mb-3 px-1">Bài viết</h3>
+        <!-- Profile Navigation Tabs -->
+        <div class="bg-white rounded-2xl shadow-sm px-6 flex gap-6 mb-6">
+            <button id="tabPostsBtn" onclick="switchTab('posts')" class="py-4 font-bold text-primary border-b-2 border-primary transition outline-none">Bài viết</button>
+            <button id="tabFriendsBtn" onclick="switchTab('friends')" class="py-4 font-bold text-gray-500 hover:text-gray-700 border-b-2 border-transparent transition outline-none">Bạn bè <span id="profileFriendCount" class="text-sm font-normal text-gray-400 ml-1"></span></button>
+        </div>
 
-        <!-- Posts -->
-        <div class="bg-white rounded-2xl shadow-sm p-5 min-h-24">
-            <div id="profilePosts">
-                <p class="text-center text-gray-400 text-sm py-6">Đang tải bài viết...</p>
+        <!-- Posts Tab Content -->
+        <div id="tabPostsContent" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Sidebar (Intro) -->
+            <div class="lg:col-span-1 space-y-6">
+                <div class="bg-white rounded-2xl shadow-sm p-5">
+                    <h3 class="font-bold text-gray-900 mb-4">Giới thiệu</h3>
+                    <div id="sidebarDetails" class="space-y-3 text-sm">
+                        <!-- Details list -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Column (Posts) -->
+            <div class="lg:col-span-2">
+                <h3 class="text-lg font-bold text-gray-900 mb-4 px-1">Bài viết</h3>
+                <div id="profilePosts" class="space-y-4">
+                    <div class="bg-white rounded-2xl shadow-sm p-10 text-center">
+                        <p class="text-gray-400 text-sm">Đang tải bài viết...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Friends Tab Content -->
+        <div id="tabFriendsContent" class="hidden bg-white rounded-2xl shadow-sm p-6 mb-6 min-h-[300px]">
+            <h3 class="text-lg font-bold text-gray-900 mb-6">Bạn bè</h3>
+            <div id="profileFriendsList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <p class="text-gray-400 text-sm col-span-2 text-center py-8">Đang tải danh sách bạn bè...</p>
             </div>
         </div>
     </div>
 
     <!-- Edit Modal -->
-    <div id="editModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+    <div id="editModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <h3 class="font-bold text-gray-900">Chỉnh sửa hồ sơ</h3>
+                <h3 class="font-bold text-lg text-gray-900">Chỉnh sửa hồ sơ</h3>
                 <button onclick="document.getElementById('editModal').classList.add('hidden')"
-                    class="text-gray-400 hover:text-gray-600 text-lg">
+                    class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="px-6 py-5 space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Họ và
-                        tên</label>
-                    <input type="text" id="editFullName"
-                        class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition"
-                        placeholder="Nhập họ và tên">
+            <div class="px-6 py-5 space-y-5 overflow-y-auto flex-1 custom-scrollbar">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Họ và tên</label>
+                        <input type="text" id="editFullName"
+                            class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                            placeholder="Nhập họ và tên">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Quyền riêng tư</label>
+                        <select id="editPrivacy" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition">
+                            <option value="PUBLIC">Công khai</option>
+                            <option value="FRIENDS">Bạn bè</option>
+                            <option value="ONLY_ME">Chỉ mình tôi</option>
+                        </select>
+                    </div>
                 </div>
+
                 <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">URL Ảnh đại
-                        diện</label>
-                    <input type="text" id="editAvatar"
-                        class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition"
-                        placeholder="https://...">
+                    <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Tiểu sử (Bio)</label>
+                    <textarea id="editBio" rows="2"
+                        class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition resize-none"
+                        placeholder="Mô tả ngắn về bạn..."></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Nơi làm việc</label>
+                        <input type="text" id="editWorkplace" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition" placeholder="Công ty...">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Học vấn</label>
+                        <input type="text" id="editEducation" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition" placeholder="Trường học...">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Vị trí hiện tại</label>
+                    <input type="text" id="editLocation" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition" placeholder="Thành phố...">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div class="bg-gray-50 p-3 rounded-xl border border-dashed border-gray-300 relative">
+                        <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Ảnh đại diện</label>
+                        <input type="file" id="editAvatarFile" accept="image/*" class="w-full text-xs">
+                        <input type="hidden" id="editAvatarUrl">
+                        <button onclick="document.getElementById('editAvatarUrl').value=''; alert('Đã gỡ ảnh đại diện')" class="mt-2 text-[10px] text-red-500 font-bold hover:underline">Gỡ ảnh</button>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-xl border border-dashed border-gray-300 relative">
+                        <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Ảnh bìa</label>
+                        <input type="file" id="editCoverFile" accept="image/*" class="w-full text-xs">
+                        <input type="hidden" id="editCoverUrl">
+                        <button onclick="document.getElementById('editCoverUrl').value=''; alert('Đã gỡ ảnh bìa')" class="mt-2 text-[10px] text-red-500 font-bold hover:underline">Gỡ ảnh</button>
+                    </div>
                 </div>
             </div>
-            <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+            <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50">
                 <button onclick="document.getElementById('editModal').classList.add('hidden')"
-                    class="border border-gray-200 rounded-full px-5 py-2 text-sm font-medium hover:bg-gray-50 transition">Hủy</button>
+                    class="border border-gray-200 bg-white rounded-full px-6 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">Hủy</button>
                 <button onclick="saveProfile()"
-                    class="bg-primary hover:bg-primary-dark text-white rounded-full px-5 py-2 text-sm font-semibold transition">Lưu</button>
+                    class="bg-primary hover:bg-primary-dark text-white rounded-full px-8 py-2 text-sm font-bold transition shadow-md">Lưu thay đổi</button>
             </div>
         </div>
     </div>

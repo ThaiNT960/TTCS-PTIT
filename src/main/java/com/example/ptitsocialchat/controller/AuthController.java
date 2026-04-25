@@ -65,30 +65,4 @@ public class AuthController {
                 })
                 .collect(Collectors.toList());
     }
-
-    // Cập nhật hồ sơ cá nhân
-    @PutMapping("/profile")
-    public ResponseEntity<?> updateProfile(@RequestBody Map<String, String> request) {
-        String username = request.get("username");
-        User user = userService.findByUsername(username).orElse(null);
-        if (user == null) {
-            return ResponseEntity.badRequest().body("User not found");
-        }
-        if (request.containsKey("fullName") && request.get("fullName") != null) {
-            user.setFullName(request.get("fullName"));
-        }
-        if (request.containsKey("avatar") && request.get("avatar") != null) {
-            user.setAvatar(request.get("avatar"));
-        }
-        userService.save(user);
-
-        // Trả về thông tin mới để frontend cập nhật localStorage
-        Map<String, Object> response = new HashMap<>();
-        response.put("id", user.getId());
-        response.put("username", user.getUsername());
-        response.put("role", user.getRole());
-        response.put("fullName", user.getFullName());
-        response.put("avatar", user.getAvatar());
-        return ResponseEntity.ok(response);
-    }
 }

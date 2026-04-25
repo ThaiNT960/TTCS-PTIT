@@ -1,5 +1,6 @@
 package com.example.ptitsocialchat.entity;
 
+import com.example.ptitsocialchat.enums.PrivacySetting;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
@@ -17,7 +18,11 @@ public class Post {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    private String imageUrl;
+    private String videoUrl;
+    private String checkInLocation;
+
+    @Enumerated(EnumType.STRING)
+    private PrivacySetting privacy = PrivacySetting.PUBLIC;
 
     private LocalDateTime createdAt;
 
@@ -31,6 +36,9 @@ public class Post {
     @JsonIgnore
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostLike> likes;
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PostMedia> media;
 
     // Getters and Setters
     public Long getId() {
@@ -49,12 +57,28 @@ public class Post {
         this.content = content;
     }
 
-    public String getImageUrl() {
-        return imageUrl;
+    public String getVideoUrl() {
+        return videoUrl;
     }
 
-    public void setImageUrl(String imageUrl) {
-        this.imageUrl = imageUrl;
+    public void setVideoUrl(String videoUrl) {
+        this.videoUrl = videoUrl;
+    }
+
+    public String getCheckInLocation() {
+        return checkInLocation;
+    }
+
+    public void setCheckInLocation(String checkInLocation) {
+        this.checkInLocation = checkInLocation;
+    }
+
+    public PrivacySetting getPrivacy() {
+        return privacy;
+    }
+
+    public void setPrivacy(PrivacySetting privacy) {
+        this.privacy = privacy;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -87,5 +111,13 @@ public class Post {
 
     public void setLikes(List<PostLike> likes) {
         this.likes = likes;
+    }
+
+    public List<PostMedia> getMedia() {
+        return media;
+    }
+
+    public void setMedia(List<PostMedia> media) {
+        this.media = media;
     }
 }

@@ -3,6 +3,7 @@ package com.example.ptitsocialchat.service;
 import com.example.ptitsocialchat.entity.Friend;
 import com.example.ptitsocialchat.entity.FriendRequest;
 import com.example.ptitsocialchat.entity.User;
+import com.example.ptitsocialchat.enums.NotificationType;
 import com.example.ptitsocialchat.repository.FriendRepository;
 import com.example.ptitsocialchat.repository.FriendRequestRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,8 @@ public class FriendService {
     private FriendRepository friendRepository;
     @Autowired
     private FriendRequestRepository friendRequestRepository;
+    @Autowired
+    private NotificationService notificationService;
 
     public FriendRequest sendRequest(User sender, User receiver) {
         FriendRequest request = new FriendRequest();
@@ -24,7 +27,12 @@ public class FriendService {
         request.setReceiver(receiver);
         request.setStatus("PENDING");
         request.setCreatedAt(LocalDateTime.now());
-        return friendRequestRepository.save(request);
+        FriendRequest saved = friendRequestRepository.save(request);
+        
+        // Tạo thông báo
+        notificationService.createNotification(receiver, sender, NotificationType.FRIEND_REQUEST, "/friend.html");
+        
+        return saved;
     }
 
     public void acceptRequest(Long requestId) {
@@ -59,5 +67,21 @@ public class FriendService {
         FriendRequest request = friendRequestRepository.findById(requestId).orElseThrow();
         request.setStatus("REJECTED");
         friendRequestRepository.save(request);
+    }
+
+    public String getFriendshipStatus(User viewer, User target) {
+        if (viewer.getId().equals(target.getId())) {
+            return "SELF";
+        }
+        if (friendRepository.findByUserAndFriend(viewer, target).isPresent()) {
+            return "FRIENDS";
+        }
+        if (friendRequestRepository.findBySenderAndReceiverAndStatus(viewer, target, "PENDING").isPresent()) {
+            return "PENDING_SENT";
+        }
+        if (friendRequestRepository.findBySenderAndReceiverAndStatus(target, viewer, "PENDING").isPresent()) {
+            return "PENDING_RECEIVED";
+        }
+        return "NONE";
     }
 }

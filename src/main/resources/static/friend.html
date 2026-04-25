@@ -65,39 +65,23 @@
             <!-- Tabs -->
             <div class="bg-white rounded-2xl shadow-sm p-2 mb-4 flex gap-1">
                 <button class="tab-btn active flex-1 py-2.5 rounded-xl text-sm font-medium transition"
-                    onclick="switchTab('friends', this)">Danh sách bạn bè</button>
-                <button class="tab-btn flex-1 py-2.5 rounded-xl text-sm font-medium transition"
                     onclick="switchTab('requests', this)">Lời mời kết bạn</button>
                 <button class="tab-btn flex-1 py-2.5 rounded-xl text-sm font-medium transition"
-                    onclick="switchTab('search', this)">Tìm kiếm</button>
-            </div>
-
-            <!-- Friends List -->
-            <div id="tab-friends" class="bg-white rounded-2xl shadow-sm p-6">
-                <div id="friendsList">
-                    <p class="text-center text-gray-400 text-sm py-6">Đang tải...</p>
-                </div>
+                    onclick="switchTab('suggestions', this)">Gợi ý kết bạn</button>
             </div>
 
             <!-- Requests -->
-            <div id="tab-requests" class="bg-white rounded-2xl shadow-sm p-6 hidden">
+            <div id="tab-requests" class="bg-white rounded-2xl shadow-sm p-6">
                 <div id="friendRequests">
                     <p class="text-center text-gray-400 text-sm py-6">Đang tải...</p>
                 </div>
             </div>
 
-            <!-- Search -->
-            <div id="tab-search" class="bg-white rounded-2xl shadow-sm p-6 hidden">
-                <div class="flex gap-3 mb-5">
-                    <input type="text" id="searchInput"
-                        class="flex-1 border border-gray-200 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition"
-                        placeholder="Tìm kiếm người dùng..." onkeyup="if(event.key==='Enter') searchFriend()">
-                    <button onclick="searchFriend()"
-                        class="bg-primary hover:bg-primary-dark text-white text-sm font-semibold px-5 py-2 rounded-full transition">
-                        <i class="fas fa-search"></i> Tìm
-                    </button>
+            <!-- Suggestions -->
+            <div id="tab-suggestions" class="bg-white rounded-2xl shadow-sm p-6 hidden">
+                <div id="friendSuggestions">
+                    <p class="text-center text-gray-400 text-sm py-6">Tính năng đang được phát triển...</p>
                 </div>
-                <div id="searchResults"></div>
             </div>
 
         </div>
@@ -117,7 +101,7 @@
             if (!document.getElementById('navAvatarWrap').contains(e.target)) document.getElementById('userMenu').classList.add('hidden');
         });
         function switchTab(tab, btn) {
-            ['friends', 'requests', 'search'].forEach(t => {
+            ['requests', 'suggestions'].forEach(t => {
                 document.getElementById('tab-' + t).classList.add('hidden');
             });
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
