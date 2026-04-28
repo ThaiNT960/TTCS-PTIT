@@ -1,6 +1,5 @@
 package com.example.ptitsocialchat.entity;
 
-import com.example.ptitsocialchat.enums.PrivacySetting;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
@@ -19,7 +18,7 @@ public class User {
 
     @JsonIgnore
     @Column(nullable = false)
-    private String password; // Lưu plain text theo yêu cầu
+    private String password;
 
     private String fullName;
     private String avatar;
@@ -28,10 +27,11 @@ public class User {
     private String workplace;
     private String education;
     private String location;
-    private String role; // ROLE_USER, ROLE_ADMIN
 
     @Enumerated(EnumType.STRING)
-    private PrivacySetting privacySetting = PrivacySetting.PUBLIC;
+    private com.example.ptitsocialchat.enums.PrivacySetting privacySetting = com.example.ptitsocialchat.enums.PrivacySetting.PUBLIC;
+
+    private String role; // ROLE_USER, ROLE_ADMIN
 
     // Getters and Setters
     public Long getId() {
@@ -74,6 +74,14 @@ public class User {
         this.avatar = avatar;
     }
 
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
     public String getCoverPhoto() {
         return coverPhoto;
     }
@@ -114,19 +122,11 @@ public class User {
         this.location = location;
     }
 
-    public String getRole() {
-        return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
-
-    public PrivacySetting getPrivacySetting() {
+    public com.example.ptitsocialchat.enums.PrivacySetting getPrivacySetting() {
         return privacySetting;
     }
 
-    public void setPrivacySetting(PrivacySetting privacySetting) {
+    public void setPrivacySetting(com.example.ptitsocialchat.enums.PrivacySetting privacySetting) {
         this.privacySetting = privacySetting;
     }
 }

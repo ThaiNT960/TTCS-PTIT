@@ -21,82 +21,82 @@ public class PostController {
     private UserService userService;
 
     @GetMapping
-    public List<PostDTO> getAllPosts(@RequestParam(required = false) String username) {
-        if (username != null) {
-            User currentUser = userService.findByUsername(username).orElse(null);
-            return postService.getAllPosts(currentUser);
+    public List<PostDTO> getAllPosts(@RequestParam(required = false) String username,
+            @RequestParam(required = false) String search) {
+        User currentUser = null;
+        if (username != null && !username.isEmpty()) {
+            currentUser = userService.findByUsername(username).orElse(null);
         }
-        return postService.getAllPosts();
+        return postService.getAllPosts(currentUser, search);
     }
 
     @GetMapping("/user/{targetUsername}")
-    public ResponseEntity<?> getUserPosts(@PathVariable String targetUsername, @RequestParam(required = false) String viewer) {
+    public List<PostDTO> getPostsByUser(@PathVariable String targetUsername,
+            @RequestParam(required = false) String viewer) {
         User targetUser = userService.findByUsername(targetUsername).orElse(null);
-        if (targetUser == null) {
-            return ResponseEntity.notFound().build();
+        if (targetUser == null)
+            return List.of();
+        User viewerUser = null;
+        if (viewer != null && !viewer.isEmpty()) {
+            viewerUser = userService.findByUsername(viewer).orElse(null);
         }
-        User viewerUser = viewer != null ? userService.findByUsername(viewer).orElse(null) : null;
-        return ResponseEntity.ok(postService.getUserPosts(targetUser, viewerUser));
-    }
-
-    @GetMapping("/search")
-    public ResponseEntity<?> searchPosts(@RequestParam String keyword, @RequestParam(required = false) String viewer) {
-        User viewerUser = viewer != null ? userService.findByUsername(viewer).orElse(null) : null;
-        return ResponseEntity.ok(postService.searchPosts(keyword, viewerUser));
+        return postService.getPostsByUser(targetUser, viewerUser);
     }
 
     @PostMapping
-    public ResponseEntity<?> createPost(@RequestBody Map<String, Object> request) {
-        String username = (String) request.get("username");
-        String content = (String) request.get("content");
-        List<String> mediaUrls = (List<String>) request.get("mediaUrls");
-        
+    public ResponseEntity<?> createPost(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        String content = request.get("content");
+        String imageUrl = request.get("imageUrl");
         User user = userService.findByUsername(username).orElseThrow();
-        postService.createPost(content, mediaUrls, user);
-        return ResponseEntity.ok("Post created");
+        PostService.CreatePostResult result = postService.createPost(content, imageUrl, user);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("status", result.getStatus());
+        response.put("message", result.getMessage());
+        if (result.getLabel() != null) {
+            response.put("label", result.getLabel());
+        }
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{postId}/comments")
-    public ResponseEntity<?> addComment(@PathVariable Long postId, @RequestBody Map<String, Object> request) {
-        String username = (String) request.get("username");
-        String content = (String) request.get("content");
-        Long parentCommentId = null;
-        if (request.get("parentCommentId") != null) {
-            parentCommentId = Long.valueOf(request.get("parentCommentId").toString());
-        }
-        User user = userService.findByUsername(username).orElseThrow();
-        postService.addComment(postId, content, parentCommentId, user);
-        return ResponseEntity.ok("Comment added");
-    }
-
-    @PostMapping("/{postId}/reaction")
-    public ResponseEntity<?> reactToPost(@PathVariable Long postId, @RequestBody Map<String, String> request) {
+    public ResponseEntity<?> addComment(@PathVariable Long postId, @RequestBody Map<String, String> request) {
         String username = request.get("username");
-        String reactionType = request.get("reactionType");
-        if (reactionType == null) reactionType = "LIKE"; // fallback
+        String content = request.get("content");
+        String parentIdStr = request.get("parentId");
+        Long parentId = (parentIdStr != null && !parentIdStr.isEmpty() && !parentIdStr.equals("null"))
+                ? Long.parseLong(parentIdStr)
+                : null;
         User user = userService.findByUsername(username).orElseThrow();
-        boolean reacted = postService.reactToPost(postId, user, reactionType);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("reacted", reacted);
-        return ResponseEntity.ok(response);
+        postService.addComment(postId, content, user, parentId);
+        return ResponseEntity.ok("Comment added");
     }
 
     @PostMapping("/comments/{commentId}/reaction")
     public ResponseEntity<?> reactToComment(@PathVariable Long commentId, @RequestBody Map<String, String> request) {
         String username = request.get("username");
         String reactionType = request.get("reactionType");
-        if (reactionType == null) reactionType = "LIKE"; // fallback
         User user = userService.findByUsername(username).orElseThrow();
-        boolean reacted = postService.reactToComment(commentId, user, reactionType);
+        boolean success = postService.reactToComment(commentId, user, reactionType != null ? reactionType : "LIKE");
+        return ResponseEntity.ok(Map.of("success", success, "liked", success));
+    }
+
+    @PostMapping("/{postId}/like")
+    public ResponseEntity<?> reactToPost(@PathVariable Long postId, @RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        String reactionType = request.get("reactionType");
+        User user = userService.findByUsername(username).orElseThrow();
+        boolean success = postService.reactToPost(postId, user, reactionType != null ? reactionType : "LIKE");
 
         Map<String, Object> response = new HashMap<>();
-        response.put("reacted", reacted);
+        response.put("success", success);
+        response.put("liked", success);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{postId}/reactions")
-    public ResponseEntity<?> getPostReactions(@PathVariable Long postId) {
+    public ResponseEntity<List<PostDTO.ReactionUserDTO>> getPostReactions(@PathVariable Long postId) {
         return ResponseEntity.ok(postService.getPostReactions(postId));
     }
 

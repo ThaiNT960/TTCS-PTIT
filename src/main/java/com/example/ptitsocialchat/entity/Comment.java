@@ -2,6 +2,7 @@ package com.example.ptitsocialchat.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "comments")
@@ -15,7 +16,9 @@ public class Comment {
 
     private LocalDateTime createdAt;
 
+    @Column(name = "parent_comment_id")
     private Long parentCommentId;
+
     private String imageUrl;
 
     @ManyToOne
@@ -27,7 +30,7 @@ public class Comment {
     private Post post;
 
     @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true)
-    private java.util.List<CommentReaction> reactions;
+    private List<CommentReaction> reactions;
 
     // Getters and Setters
     public Long getId() { return id; }
@@ -36,14 +39,14 @@ public class Comment {
     public void setContent(String content) { this.content = content; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public Long getParentCommentId() { return parentCommentId; }
-    public void setParentCommentId(Long parentCommentId) { this.parentCommentId = parentCommentId; }
-    public String getImageUrl() { return imageUrl; }
-    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
     public Post getPost() { return post; }
     public void setPost(Post post) { this.post = post; }
-    public java.util.List<CommentReaction> getReactions() { return reactions; }
-    public void setReactions(java.util.List<CommentReaction> reactions) { this.reactions = reactions; }
+    public Long getParentCommentId() { return parentCommentId; }
+    public void setParentCommentId(Long parentCommentId) { this.parentCommentId = parentCommentId; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public List<CommentReaction> getReactions() { return reactions; }
+    public void setReactions(List<CommentReaction> reactions) { this.reactions = reactions; }
 }

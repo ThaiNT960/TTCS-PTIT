@@ -1,77 +1,74 @@
 var API_URL = 'http://localhost:8080/api';
-let selectedFiles = []; // Phạm vi toàn cục để dùng chung
 
 document.addEventListener('DOMContentLoaded', () => {
     const user = checkAuth();
 
-    // Set navbar avatar
+    // Set navbar avatar initial
     const navAvatar = document.getElementById('navAvatar');
-    if (navAvatar && (user.fullName || user.username)) {
-        const initial = (user.fullName || user.username).charAt(0).toUpperCase();
-        if (user.avatar) {
-            navAvatar.innerHTML = `<img src="${user.avatar}" class="w-full h-full object-cover rounded-full">`;
-        } else {
-            navAvatar.textContent = initial;
-        }
-    }
-
-    // Show admin link
-    if (user.role === 'ROLE_ADMIN') {
-        const link = document.getElementById('adminNavLink');
-        if (link) link.style.display = 'inline';
-    }
+    if (navAvatar && user.fullName) navAvatar.textContent = user.fullName.charAt(0).toUpperCase();
+    if (user.avatar) navAvatar.innerHTML = `<img src="${user.avatar}" class="w-full h-full object-cover" onerror="this.parentElement.textContent='${user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}'">`;
 
     loadPosts(user);
     setupPostForm(user);
-    
-    // Notifications
-    loadNotifications(user);
-    setInterval(() => loadNotifications(user), 30000); 
+    loadAnnouncements();
 
-    // Handle multi-image selection & preview
-    const imageFileInput = document.getElementById('postImageFile');
-    if (imageFileInput) {
-        imageFileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                // Thêm file mới vào mảng thay vì ghi đè (tùy chọn, ở đây là ghi đè để giống FB)
-                selectedFiles = Array.from(e.target.files);
-                renderPreviews();
+    // Image preview setup
+    const postImageFile = document.getElementById('postImageFile');
+    const previewContainer = document.getElementById('createPostImagePreviewContainer');
+    const previewImg = document.getElementById('createPostImagePreview');
+    const cancelBtn = document.getElementById('cancelPostImagePreview');
+
+    if (postImageFile) {
+        postImageFile.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    previewContainer.classList.remove('hidden');
+                }
+                reader.readAsDataURL(this.files[0]);
             }
         });
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function() {
+                postImageFile.value = '';
+                previewImg.src = '';
+                previewContainer.classList.add('hidden');
+            });
+        }
     }
 });
 
-function renderPreviews() {
-    const container = document.getElementById('imagePreviewContainer');
-    if (!container) return;
-    container.innerHTML = '';
-    if (selectedFiles.length > 0) {
-        container.classList.remove('hidden');
-        selectedFiles.forEach((file, idx) => {
-            const reader = new FileReader();
-            reader.onload = (re) => {
-                const div = document.createElement('div');
-                div.className = 'relative aspect-square rounded-lg overflow-hidden border border-gray-200 group';
-                const isImg = file.type.startsWith('image/');
-                div.innerHTML = `
-                    ${isImg ? `<img src="${re.target.result}" class="w-full h-full object-cover">` : `<div class="w-full h-full bg-gray-100 flex items-center justify-center"><i class="fas fa-video text-gray-400"></i></div>`}
-                    <button onclick="removePreviewFile(${idx})" class="absolute top-1 right-1 w-6 h-6 bg-black/60 text-white rounded-full text-[10px] hover:bg-black transition flex items-center justify-center">
-                        <i class="fas fa-times"></i>
-                    </button>
-                `;
-                container.appendChild(div);
-            };
-            reader.readAsDataURL(file);
-        });
-    } else {
-        container.classList.add('hidden');
-    }
+let currentUserObj = null;
+
+function escapeHtml(unsafe) {
+    if (!unsafe) return "";
+    return String(unsafe)
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
 }
 
-window.removePreviewFile = (index) => {
-    selectedFiles.splice(index, 1);
-    renderPreviews();
+var TAG_COLORS = {
+    '#just-for-fun': 'hashtag-blue',
+    '#quan-trọng':   'hashtag-red',
+    '#hỏi-đáp':     'hashtag-green',
+    '#chia-sẻ':     'hashtag-purple',
+    '#học-tập':     'hashtag-yellow'
 };
+
+function renderContent(content) {
+    if (!content) return '';
+    var escaped = escapeHtml(content);
+    escaped = escaped.replace(/(#[\w\u00C0-\u024F\u1E00-\u1EFF-]+)/g, function(match) {
+        var lower = match.toLowerCase();
+        var colorClass = TAG_COLORS[lower] || 'hashtag-default';
+        return '<span class="hashtag-tag ' + colorClass + '">' + match + '</span>';
+    });
+    return escaped;
+}
 
 function formatTime(dateStr) {
     if (!dateStr) return '';
@@ -88,102 +85,70 @@ function formatTime(dateStr) {
     return d.toLocaleDateString('vi-VN');
 }
 
-// --- NOTIFICATIONS ---
-function toggleNotiMenu() {
-    const menu = document.getElementById('notiMenu');
-    menu.classList.toggle('hidden');
-    if (!menu.classList.contains('hidden')) {
-        loadNotifications(checkAuth());
+let allPostsData = [];
+
+function searchPosts() {
+    var input = document.getElementById('searchInput');
+    var query = input ? input.value.trim() : '';
+    if (!query) return;
+    document.getElementById('searchIndicator').classList.remove('hidden');
+    document.getElementById('searchQueryText').textContent = query;
+    document.getElementById('clearSearchBtn').classList.remove('hidden');
+    if (currentUserObj) {
+        loadPosts(currentUserObj, query);
     }
 }
 
-async function loadNotifications(user) {
+function clearSearch() {
+    var input = document.getElementById('searchInput');
+    if (input) input.value = '';
+    document.getElementById('searchIndicator').classList.add('hidden');
+    document.getElementById('clearSearchBtn').classList.add('hidden');
+    if (currentUserObj) {
+        loadPosts(currentUserObj);
+    }
+}
+
+async function loadPosts(user, searchQuery = '') {
+    currentUserObj = user;
     try {
-        const res = await fetch(`${API_URL}/notifications?username=${encodeURIComponent(user.username)}`);
-        const notifications = await res.json();
-        const badge = document.getElementById('notiBadge');
-        const list = document.getElementById('notiList');
-        const unreadCount = notifications.filter(n => !n.isRead).length;
-        if (unreadCount > 0) {
-            badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
-            badge.classList.remove('hidden');
-        } else { badge.classList.add('hidden'); }
+        let url = `${API_URL}/posts?username=${encodeURIComponent(user.username)}`;
+        if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
         
-        if (notifications.length === 0) {
-            list.innerHTML = `<p class="text-center text-gray-400 text-sm py-10">Không có thông báo nào</p>`;
-            return;
-        }
-        list.innerHTML = notifications.map(n => {
-            const initial = (n.senderFullName || n.senderUsername || 'U').charAt(0).toUpperCase();
-            let actionText = '';
-            let icon = '';
-            switch(n.type) {
-                case 'LIKE_POST': actionText = 'đã thích bài viết của bạn'; icon = 'fa-heart text-red-500'; break;
-                case 'COMMENT_POST': actionText = 'đã bình luận về bài viết của bạn'; icon = 'fa-comment text-blue-500'; break;
-                case 'FRIEND_REQUEST': actionText = 'đã gửi lời mời kết bạn'; icon = 'fa-user-plus text-primary'; break;
-                default: actionText = 'có thông báo mới'; icon = 'fa-bell text-gray-400';
-            }
-            return `
-                <div onclick="handleNotiClick(${n.id}, '${n.link}')" class="px-4 py-3 flex gap-3 hover:bg-gray-50 cursor-pointer transition border-b border-gray-50 last:border-0 ${n.isRead ? '' : 'bg-primary/5'}">
-                    <div class="w-12 h-12 rounded-full bg-gray-100 flex-shrink-0 flex items-center justify-center relative">
-                        ${n.senderAvatar ? `<img src="${n.senderAvatar}" class="w-full h-full rounded-full object-cover">` : `<span class="font-bold text-primary">${initial}</span>`}
-                        <div class="absolute -bottom-1 -right-1 bg-white rounded-full w-5 h-5 flex items-center justify-center shadow-sm border border-gray-100">
-                            <i class="fas ${icon} text-[10px]"></i>
-                        </div>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm text-gray-900 leading-snug"><span class="font-bold">${n.senderFullName || n.senderUsername}</span> ${actionText}</p>
-                        <p class="text-[11px] font-medium text-primary mt-1">${formatTime(n.createdAt)}</p>
-                    </div>
-                    ${n.isRead ? '' : `<div class="w-2 h-2 bg-primary rounded-full mt-2 self-start flex-shrink-0 shadow-sm shadow-primary/40"></div>`}
-                </div>`;
-        }).join('');
-    } catch (e) { console.error(e); }
-}
-
-async function handleNotiClick(id, link) {
-    try {
-        await fetch(`${API_URL}/notifications/${id}/read`, { method: 'PUT' });
-        window.location.href = link;
-    } catch (e) { console.error(e); }
-}
-
-async function markAllNotiAsRead() {
-    const user = checkAuth();
-    try {
-        await fetch(`${API_URL}/notifications/read-all?username=${encodeURIComponent(user.username)}`, { method: 'PUT' });
-        loadNotifications(user);
-    } catch (e) { console.error(e); }
-}
-
-// --- POSTS ---
-async function loadPosts(user) {
-    try {
-        const res = await fetch(`${API_URL}/posts?username=${encodeURIComponent(user.username)}`);
+        const res = await fetch(url);
         const posts = await res.json();
         const feed = document.getElementById('postsFeed');
-        if (!feed) return;
         feed.innerHTML = '';
+        allPostsData = posts || [];
+
         if (!posts.length) {
-            feed.innerHTML = `<div class="bg-white rounded-2xl shadow-sm p-8 text-center text-gray-400 text-sm">Chưa có bài viết nào</div>`;
-            return;
+            feed.innerHTML = `<div class="bg-white rounded-2xl shadow-sm p-8 text-center text-gray-400 text-sm">` + (searchQuery ? `Không tìm thấy bài viết nào phù hợp.` : `Chưa có bài viết nào. Hãy đăng bài đầu tiên!`) + `</div>`;
+        } else {
+            posts.forEach(post => renderPost(post, user, feed));
         }
-        posts.forEach(post => renderPost(post, user, feed));
-    } catch (e) { console.error(e); }
+        
+        extractTopics(allPostsData);
+    } catch (e) {
+        console.error(e);
+    }
 }
 
 function renderPost(post, user, container) {
-    const initials = (post.fullName || post.username || '?').charAt(0).toUpperCase();
+    const initials = (post.userFullName || post.username || '?').charAt(0).toUpperCase();
     const isOwner = post.username === user.username;
     const isAdmin = user.role === 'ROLE_ADMIN';
+    const liked = post.liked;
+    const commentCount = (post.comments || []).length;
+    
+    // Logic Reaction từ PTIT
     const currentReaction = post.currentReaction;
-    
-    let totalReactionCount = 0;
-    if (post.reactionCounts) {
-        Object.values(post.reactionCounts).forEach(count => { totalReactionCount += count; });
-    } else { totalReactionCount = post.likeCount || 0; }
-    
-    const reactionIconMap = { 'LIKE': '<i class="fas fa-thumbs-up"></i> Thích', 'HAHA': '<i class="far fa-laugh-squint"></i> Haha', 'SAD': '<i class="far fa-sad-tear"></i> Buồn', 'ANGRY': '<i class="far fa-angry"></i> Phẫn nộ' };
+    let totalReactionCount = post.likeCount || 0;
+    const reactionIconMap = { 
+        'LIKE': '<i class="fas fa-thumbs-up"></i> Thích', 
+        'HAHA': '<i class="far fa-laugh-squint"></i> Haha', 
+        'SAD': '<i class="far fa-sad-tear"></i> Buồn', 
+        'ANGRY': '<i class="far fa-angry"></i> Phẫn nộ' 
+    };
     let currentReactHtml = '<i class="far fa-heart"></i> Thích';
     let currentBtnClass = 'text-gray-500';
     if (currentReaction && currentReaction !== 'NONE') {
@@ -191,65 +156,146 @@ function renderPost(post, user, container) {
         currentBtnClass = `curr-${currentReaction}`;
     }
 
-    let mediaHtml = '';
-    if (post.mediaUrls && post.mediaUrls.length > 0) {
-        const count = post.mediaUrls.length;
-        const gridClass = count === 1 ? 'grid-cols-1' : 'grid-cols-2';
-        mediaHtml = `<div class="grid ${gridClass} gap-1 mb-3 rounded-xl overflow-hidden border border-gray-100">`;
-        post.mediaUrls.forEach(url => {
-            const isVid = url.toLowerCase().endsWith('.mp4');
-            mediaHtml += isVid ? `<video src="${url}" controls class="w-full aspect-square object-cover"></video>` : `<img src="${url}" class="w-full aspect-square object-cover">`;
-        });
-        mediaHtml += `</div>`;
-    }
-
     const div = document.createElement('div');
     div.id = `post-${post.id}`;
-    div.className = 'bg-white rounded-2xl shadow-sm mb-4 overflow-hidden';
+    div.className = 'bg-white rounded-2xl shadow-sm mb-4 overflow-hidden fade-up';
     div.innerHTML = `
         <div class="p-5">
             <div class="flex items-center gap-3 mb-3">
-                <a href="profile.html?username=${post.username}" class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm overflow-hidden hover:opacity-80 transition">
-                    ${post.avatar ? `<img src="${post.avatar}" class="w-full h-full object-cover">` : initials}
+                <a href="profile.html?username=${post.username}" class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden hover:opacity-80 transition no-underline">
+                    ${post.userAvatar ? `<img src="${post.userAvatar}" class="w-full h-full object-cover">` : initials}
                 </a>
                 <div class="flex-1 min-w-0">
-                    <a href="profile.html?username=${post.username}" class="font-bold text-gray-900 text-sm hover:underline no-underline">${post.fullName || post.username}</a>
+                    <a href="profile.html?username=${post.username}" class="font-semibold text-gray-900 text-sm hover:underline">${post.userFullName || post.username}</a>
                     <p class="text-xs text-gray-400">${formatTime(post.createdAt)}</p>
                 </div>
-                ${(isOwner || isAdmin) ? `<button onclick="deletePost(${post.id})" class="text-gray-300 hover:text-red-500 transition text-sm px-2"><i class="fas fa-trash"></i></button>` : ''}
+                ${(isOwner || isAdmin) ? `
+                <button onclick="deletePost(${post.id})" class="text-gray-300 hover:text-red-500 transition text-sm px-2">
+                    <i class="fas fa-trash"></i>
+                </button>` : ''}
             </div>
-            <p class="text-gray-800 text-sm leading-relaxed mb-3">${post.content}</p>
-            ${mediaHtml}
-            <div class="flex items-center justify-between text-xs text-gray-500 mb-3 px-1 border-b border-gray-100 pb-3">
+            <p class="text-gray-800 text-sm leading-relaxed mb-3" style="white-space: pre-wrap;">${renderContent(post.content)}</p>
+            ${post.imageUrl ? `<img src="${post.imageUrl}" alt="Post image" class="w-full rounded-xl mb-3 max-h-96 object-cover" onerror="this.style.display='none'">` : ''}
+            <div class="flex items-center justify-between text-xs text-gray-400 mb-3 px-1 border-b border-gray-100 pb-3">
                 <div class="flex items-center gap-1 cursor-pointer hover:underline" onclick="showReactionList(${post.id})">
                     <span class="text-primary bg-primary bg-opacity-10 rounded-full w-5 h-5 flex items-center justify-center text-[10px]"><i class="fas fa-thumbs-up"></i></span>
-                    <span>${totalReactionCount}</span>
+                    <span>${totalReactionCount} lượt thích</span>
                 </div>
-                <div class="cursor-pointer hover:underline" onclick="toggleComments(${post.id})"><span>${(post.comments || []).length} bình luận</span></div>
+                <div class="cursor-pointer hover:underline" onclick="toggleComments(${post.id})">
+                    <span>${commentCount} bình luận</span>
+                </div>
             </div>
         </div>
         <div class="flex px-2 py-1">
             <div class="flex-1 reaction-container">
                 <div class="reaction-menu">
                     <span class="reaction-icon emoji-like" onclick="reactToPost(${post.id}, 'LIKE')"><i class="fas fa-thumbs-up"></i></span>
-                    <span class="reaction-icon emoji-haha" onclick="reactToPost(${post.id}, 'HAHA')"><i class="fas fa-laugh-squint"></i></span>
-                    <span class="reaction-icon emoji-sad" onclick="reactToPost(${post.id}, 'SAD')"><i class="fas fa-sad-tear"></i></span>
-                    <span class="reaction-icon emoji-angry" onclick="reactToPost(${post.id}, 'ANGRY')"><i class="fas fa-angry"></i></span>
+                    <span class="reaction-icon emoji-haha" onclick="reactToPost(${post.id}, 'HAHA')"><i class="far fa-laugh-squint"></i></span>
+                    <span class="reaction-icon emoji-sad" onclick="reactToPost(${post.id}, 'SAD')"><i class="far fa-sad-tear"></i></span>
+                    <span class="reaction-icon emoji-angry" onclick="reactToPost(${post.id}, 'ANGRY')"><i class="far fa-angry"></i></span>
                 </div>
-                <button onclick="reactToPost(${post.id}, '${currentReaction === 'LIKE' ? 'NONE' : 'LIKE'}')" class="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-semibold transition hover:bg-gray-50 ${currentBtnClass}">${currentReactHtml}</button>
+                <button onclick="reactToPost(${post.id}, '${currentReaction === 'LIKE' ? 'NONE' : 'LIKE'}')" 
+                    class="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-semibold transition hover:bg-gray-50 ${currentBtnClass}">
+                    ${currentReactHtml}
+                </button>
             </div>
-            <button onclick="toggleComments(${post.id})" class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 transition"><i class="far fa-comment"></i> Bình luận</button>
+            <button onclick="toggleComments(${post.id})" class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 transition">
+                <i class="far fa-comment"></i> Bình luận
+            </button>
         </div>
         <div id="comments-${post.id}" class="hidden border-t border-gray-100 p-4 bg-gray-50">
             <div id="comments-list-${post.id}">
                 ${renderCommentsHtml(post.id, post.comments)}
             </div>
             <div class="flex gap-2 mt-2">
-                <input type="text" id="comment-input-${post.id}" placeholder="Viết bình luận..." class="flex-1 bg-white border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-primary transition" onkeyup="if(event.key==='Enter') submitComment(${post.id})">
+                <input type="text" id="comment-input-${post.id}" placeholder="Viết bình luận..."
+                    class="flex-1 bg-white border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-primary transition"
+                    onkeyup="if(event.key==='Enter') submitComment(${post.id})">
                 <button onclick="submitComment(${post.id})" class="bg-primary hover:bg-primary-dark text-white text-xs font-semibold px-4 py-2 rounded-full transition">Gửi</button>
             </div>
-        </div>`;
+        </div>
+    `;
     container.appendChild(div);
+}
+
+function toggleComments(postId) {
+    const el = document.getElementById(`comments-${postId}`);
+    el.classList.toggle('hidden');
+}
+
+async function reactToPost(postId, reactionType) {
+    const user = checkAuth();
+    try {
+        const res = await fetch(`${API_URL}/posts/${postId}/like`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user.username, reactionType: reactionType })
+        });
+        const data = await res.json();
+        if (data.success || data.liked !== undefined) {
+            loadPosts(user, document.getElementById('searchInput') ? document.getElementById('searchInput').value.trim() : '');
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function showReactionList(postId) {
+    document.getElementById('usersModalTitle').textContent = 'Người đã bày tỏ cảm xúc';
+    const body = document.getElementById('usersModalBody');
+    body.innerHTML = '<p class="text-center text-gray-400 text-sm">Đang tải...</p>';
+    document.getElementById('usersModal').classList.remove('hidden');
+    try {
+        const res = await fetch(`${API_URL}/posts/${postId}/reactions`);
+        const users = await res.json();
+        if(!users || users.length === 0) {
+            body.innerHTML = '<p class="text-center text-gray-400 text-sm">Chưa có ai bày tỏ cảm xúc</p>';
+            return;
+        }
+        const iconMap = { 
+            'LIKE': '<i class="fas fa-thumbs-up text-blue-500"></i>', 
+            'HAHA': '<i class="fas fa-laugh-squint text-yellow-500"></i>', 
+            'SAD': '<i class="fas fa-sad-tear text-yellow-500"></i>', 
+            'ANGRY': '<i class="fas fa-angry text-red-500"></i>' 
+        };
+        body.innerHTML = users.map(u => `
+            <div class="flex items-center justify-between mb-3">
+                <a href="profile.html?username=${u.username}" class="flex items-center gap-3 no-underline hover:opacity-80">
+                    <div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold relative overflow-hidden">
+                        ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : (u.fullName||u.username).charAt(0).toUpperCase()}
+                        <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 text-[10px]">${iconMap[u.reactionType] || iconMap['LIKE']}</div>
+                    </div>
+                    <span class="font-semibold text-sm text-gray-900">${u.fullName || u.username}</span>
+                </a>
+            </div>`).join('');
+    } catch (e) { body.innerHTML = '<p class="text-center text-red-400 text-sm">Lỗi tải dữ liệu</p>'; }
+}
+
+async function deletePost(postId) {
+    if (!confirm('Xóa bài viết này?')) return;
+    const user = checkAuth();
+    try {
+        await fetch(`${API_URL}/posts/${postId}?username=${encodeURIComponent(user.username)}`, { method: 'DELETE' });
+        const el = document.getElementById(`post-${postId}`);
+        if (el) el.remove();
+    } catch (e) { console.error(e); }
+}
+
+async function submitComment(postId) {
+    const user = checkAuth();
+    const input = document.getElementById(`comment-input-${postId}`);
+    const content = input.value.trim();
+    const parentId = input.dataset.parentId || null;
+    if (!content) return;
+    try {
+        await fetch(`${API_URL}/posts/${postId}/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user.username, content, parentId })
+        });
+        input.value = '';
+        delete input.dataset.parentId;
+        input.placeholder = 'Viết bình luận...';
+        loadPosts(user, document.getElementById('searchInput') ? document.getElementById('searchInput').value.trim() : '');
+    } catch (e) { console.error(e); }
 }
 
 window.renderCommentsHtml = function(postId, comments) {
@@ -273,12 +319,12 @@ window.renderCommentsHtml = function(postId, comments) {
         return `
             <div class="flex flex-col ${marginClass}">
                 <div class="flex gap-3">
-                    <a href="profile.html?username=${c.username}" class="${avatarSize} rounded-full bg-primary flex items-center justify-center text-white font-bold flex-shrink-0 overflow-hidden hover:opacity-80 transition">
+                    <a href="profile.html?username=${c.username}" class="${avatarSize} rounded-full bg-primary flex items-center justify-center text-white font-bold flex-shrink-0 overflow-hidden hover:opacity-80 transition no-underline">
                          ${c.fullName ? c.fullName.charAt(0).toUpperCase() : 'U'}
                     </a>
                     <div class="flex-1 min-w-0">
                         <div class="bg-${isReply ? 'gray-100' : 'white'} rounded-xl px-3 py-2 shadow-sm inline-block max-w-full">
-                            <p class="font-semibold text-xs text-gray-700 mb-0.5">${c.fullName || c.username}</p>
+                            <a href="profile.html?username=${c.username}" class="font-semibold text-xs text-gray-700 mb-0.5 hover:underline">${c.fullName || c.username}</a>
                             <p class="text-sm text-gray-800 break-words">${c.content}</p>
                         </div>
                         <div class="text-[11px] text-gray-500 mt-1 ml-2 flex gap-3">
@@ -311,199 +357,165 @@ async function reactToComment(commentId) {
         await fetch(`${API_URL}/posts/comments/${commentId}/reaction`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: user.username, reactionType: 'LIKE' })
+            body: JSON.stringify({ username: user.username })
         });
-        loadPosts(user);
+        loadPosts(user, document.getElementById('searchInput') ? document.getElementById('searchInput').value.trim() : '');
     } catch (e) { console.error(e); }
 }
 
-function toggleComments(postId) {
-    const el = document.getElementById(`comments-${postId}`);
-    if (el) el.classList.toggle('hidden');
-}
+function showModerationNotice(type, message) {
+    var feed = document.getElementById('postsFeed');
+    if (!feed) return;
+    var bgColor = type === 'rejected' ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200';
+    var iconColor = type === 'rejected' ? 'text-red-500' : 'text-yellow-500';
+    var icon = type === 'rejected' ? 'fa-exclamation-triangle' : 'fa-hourglass-half';
+    var textColor = type === 'rejected' ? 'text-red-700' : 'text-yellow-700';
 
-async function reactToPost(postId, reactionType) {
-    const user = checkAuth();
-    try {
-        await fetch(`${API_URL}/posts/${postId}/reaction`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: user.username, reactionType })
-        });
-        loadPosts(user);
-    } catch (e) { console.error(e); }
-}
+    var notice = document.createElement('div');
+    notice.className = bgColor + ' border rounded-2xl p-4 mb-4 flex items-start gap-3 fade-up';
+    notice.innerHTML = '<i class="fas ' + icon + ' ' + iconColor + ' text-lg mt-0.5"></i>'
+        + '<div class="flex-1"><p class="' + textColor + ' text-sm font-medium">' + message + '</p></div>'
+        + '<button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-gray-600 text-sm"><i class="fas fa-times"></i></button>';
 
-async function showReactionList(postId) {
-    document.getElementById('usersModalTitle').textContent = 'Người đã bày tỏ cảm xúc';
-    const body = document.getElementById('usersModalBody');
-    body.innerHTML = '<p class="text-center text-gray-400 text-sm">Đang tải...</p>';
-    document.getElementById('usersModal').classList.remove('hidden');
-    try {
-        const res = await fetch(`${API_URL}/posts/${postId}/reactions`);
-        const users = await res.json();
-        if(!users || users.length === 0) {
-            body.innerHTML = '<p class="text-center text-gray-400 text-sm">Chưa có ai bày tỏ cảm xúc</p>';
-            return;
-        }
-        const iconMap = { 'LIKE': '<i class="fas fa-thumbs-up text-blue-500"></i>', 'HAHA': '<i class="fas fa-laugh-squint text-yellow-500"></i>', 'SAD': '<i class="fas fa-sad-tear text-yellow-500"></i>', 'ANGRY': '<i class="fas fa-angry text-red-500"></i>' };
-        body.innerHTML = users.map(u => `
-            <div class="flex items-center justify-between mb-3">
-                <a href="profile.html?username=${u.username}" class="flex items-center gap-3 no-underline hover:opacity-80">
-                    <div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold relative overflow-hidden">
-                        ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : (u.fullName||u.username).charAt(0).toUpperCase()}
-                        <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 text-[10px]">${iconMap[u.reactionType] || iconMap['LIKE']}</div>
-                    </div>
-                    <span class="font-semibold text-sm text-gray-900">${u.fullName || u.username}</span>
-                </a>
-            </div>`).join('');
-    } catch (e) { body.innerHTML = '<p class="text-center text-red-400 text-sm">Lỗi tải dữ liệu</p>'; }
-}
-
-async function deletePost(postId) {
-    if (!confirm('Xóa bài viết này?')) return;
-    try {
-        await fetch(`${API_URL}/posts/${postId}?username=${encodeURIComponent(checkAuth().username)}`, { method: 'DELETE' });
-        document.getElementById(`post-${postId}`).remove();
-    } catch (e) { console.error(e); }
-}
-
-async function submitComment(postId) {
-    const user = checkAuth();
-    const input = document.getElementById(`comment-input-${postId}`);
-    const content = input.value.trim();
-    if (!content) return;
-
-    const parentId = input.dataset.parentId || null;
-
-    try {
-        await fetch(`${API_URL}/posts/${postId}/comments`, { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ username: user.username, content, parentCommentId: parentId }) 
-        });
-        input.value = '';
-        input.dataset.parentId = '';
-        input.placeholder = 'Viết bình luận...';
-        loadPosts(user);
-    } catch (e) { console.error(e); }
+    feed.insertBefore(notice, feed.firstChild);
+    setTimeout(function() { if (notice.parentNode) notice.remove(); }, 8000);
 }
 
 function setupPostForm(user) {
     const form = document.getElementById('postForm');
+    const submitBtn = document.getElementById('postSubmitBtn');
     if (!form) return;
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const content = document.getElementById('postContent').value.trim();
-        const submitBtn = document.getElementById('postSubmitBtn');
-        if (!content && selectedFiles.length === 0) return;
+        const imageFile = document.getElementById('postImageFile') ? document.getElementById('postImageFile').files[0] : null;
+        if (!content && !imageFile) return;
         
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Đang đăng...';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Đang đăng...';
+        }
+        
+        let imageUrl = null;
+        if (imageFile) {
+            const formData = new FormData();
+            formData.append('imageFile', imageFile);
+            try {
+                const uploadRes = await fetch(`${API_URL}/upload/post-image`, { method: 'POST', body: formData });
+                if (uploadRes.ok) {
+                    const uploadData = await uploadRes.json();
+                    if (uploadData.status === 'ok') imageUrl = uploadData.imageUrl;
+                }
+            } catch (err) { console.error('Lỗi upload', err); }
+        }
 
         try {
-            const mediaUrls = [];
-            if (selectedFiles.length > 0) {
-                const uploadPromises = selectedFiles.map(async (file) => {
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    const res = await fetch(`${API_URL}/upload`, { method: 'POST', body: formData });
-                    if (res.ok) {
-                        const data = await res.json();
-                        return data.url;
-                    }
-                    return null;
-                });
-                const results = await Promise.all(uploadPromises);
-                results.forEach(url => { if(url) mediaUrls.push(url); });
-            }
-
             const res = await fetch(`${API_URL}/posts`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content, mediaUrls, username: user.username })
+                body: JSON.stringify({ content, imageUrl: imageUrl, username: user.username })
             });
-
             if (res.ok) {
-                form.reset();
-                selectedFiles = [];
-                document.getElementById('imagePreviewContainer').innerHTML = '';
-                document.getElementById('imagePreviewContainer').classList.add('hidden');
-                loadPosts(user);
+                const result = await res.json();
+                document.getElementById('postContent').value = '';
+                if (document.getElementById('postImageFile')) {
+                    document.getElementById('postImageFile').value = '';
+                    document.getElementById('createPostImagePreview').src = '';
+                    document.getElementById('createPostImagePreviewContainer').classList.add('hidden');
+                }
+                
+                if (result.status === 'PENDING') {
+                    showModerationNotice('pending', result.message || 'Bài viết đang chờ kiểm duyệt.');
+                } else if (result.status === 'REJECTED') {
+                    showModerationNotice('rejected', result.message || 'Bài viết bị từ chối do nội dung không phù hợp.');
+                } else {
+                    loadPosts(user);
+                }
             }
-        } catch (e) { console.error(e); } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Đăng';
+        } catch (e) {
+            console.error(e);
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Đăng';
+            }
         }
     });
 }
 
-// --- SEARCH LOGIC ---
-async function doGlobalSearch() {
-    const user = checkAuth();
-    const query = document.getElementById('globalSearchInput').value.trim();
-    const resultsContainer = document.getElementById('sidebarSearchResults');
-    const feedHeader = document.getElementById('searchFeedHeader');
-    const createPostBlock = document.getElementById('createPostBlock');
-    const postsFeed = document.getElementById('postsFeed');
-
-    if (!query) {
-        clearSearch();
-        return;
-    }
-
-    resultsContainer.innerHTML = '<p class="text-center text-gray-400 text-xs py-4">Đang tìm kiếm...</p>';
-    feedHeader.classList.remove('hidden');
-    createPostBlock.classList.add('hidden');
-    postsFeed.innerHTML = '<p class="text-center text-gray-400 text-sm py-10">Đang tìm kiếm bài viết...</p>';
-
+// Announcements & Topics
+async function loadAnnouncements() {
+    const box = document.getElementById('announcementsBox');
+    if (!box) return;
     try {
-        // 1. Search Users
-        const resUsers = await fetch(`${API_URL}/auth/users/search?keyword=${encodeURIComponent(query)}`);
-        const users = await resUsers.json();
-        const filteredUsers = users.filter(u => u.username !== user.username);
+        const res = await fetch(`${API_URL}/announcements`);
+        const data = await res.json();
         
-        if (filteredUsers.length === 0) {
-            resultsContainer.innerHTML = '<p class="text-center text-gray-400 text-xs py-4">Không tìm thấy người dùng</p>';
-        } else {
-            resultsContainer.innerHTML = filteredUsers.map(u => {
-                const initial = (u.fullName || u.username || '?').charAt(0).toUpperCase();
-                return `
-                <div class="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-xl transition">
-                    <a href="profile.html?username=${u.username}" class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold flex-shrink-0 overflow-hidden hover:opacity-80 transition no-underline">
-                        ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : initial}
-                    </a>
-                    <div class="flex-1 min-w-0">
-                        <a href="profile.html?username=${u.username}" class="font-semibold text-sm text-gray-900 truncate hover:underline no-underline block">${u.fullName || u.username}</a>
-                        <p class="text-xs text-gray-400">@${u.username}</p>
-                    </div>
-                </div>`;
-            }).join('');
+        if (!data || !data.length) {
+            box.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Chưa có thông báo nào.</p>';
+            return;
         }
-
-        // 2. Search Posts
-        const resPosts = await fetch(`${API_URL}/posts/search?keyword=${encodeURIComponent(query)}&viewer=${encodeURIComponent(user.username)}`);
-        const posts = await resPosts.json();
-        
-        postsFeed.innerHTML = '';
-        if (posts.length === 0) {
-            postsFeed.innerHTML = '<div class="bg-white rounded-2xl shadow-sm p-8 text-center text-gray-400 text-sm">Không tìm thấy bài viết nào phù hợp</div>';
-        } else {
-            posts.forEach(post => renderPost(post, user, postsFeed));
-        }
-
+        box.innerHTML = '';
+        data.forEach(ann => {
+            const div = document.createElement('div');
+            div.className = 'border-b border-gray-100 py-3 px-1 last:border-0 hover:bg-gray-50 transition rounded-lg cursor-default';
+            div.innerHTML = `<div class="flex items-center gap-2 mb-1">
+                                <span class="text-xs text-gray-400">${formatTime(ann.createdAt)}</span>
+                             </div>
+                             <p class="text-sm font-semibold text-gray-900 mb-0.5">${escapeHtml(ann.title)}</p>
+                             <p class="text-xs text-gray-500 line-clamp-2">${escapeHtml(ann.content)}</p>`;
+            box.appendChild(div);
+        });
     } catch (e) {
-        console.error(e);
-        resultsContainer.innerHTML = '<p class="text-center text-red-400 text-xs py-4">Lỗi tìm kiếm</p>';
-        postsFeed.innerHTML = '<p class="text-center text-red-400 text-sm">Lỗi tải bài viết</p>';
+        box.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Lỗi tải thông báo.</p>';
     }
 }
 
-window.clearSearch = function() {
-    const user = checkAuth();
-    document.getElementById('globalSearchInput').value = '';
-    document.getElementById('sidebarSearchResults').innerHTML = '<p class="text-xs text-gray-400 text-center">Gõ từ khóa và nhấn Enter</p>';
-    document.getElementById('searchFeedHeader').classList.add('hidden');
-    document.getElementById('createPostBlock').classList.remove('hidden');
-    loadPosts(user);
-};
+function extractTopics(posts) {
+    const box = document.getElementById('topicsBox');
+    if (!box) return;
+
+    const tagCounts = {};
+    (posts || []).forEach(post => {
+        if (!post.content) return;
+        const matches = post.content.match(/#[\w\u00C0-\u024F\u1E00-\u1EFF-]+/g);
+        if (matches) {
+            matches.forEach(tag => {
+                const lower = tag.toLowerCase();
+                tagCounts[lower] = (tagCounts[lower] || 0) + 1;
+            });
+        }
+    });
+
+    const sorted = Object.keys(tagCounts).sort((a, b) => tagCounts[b] - tagCounts[a]);
+
+    if (sorted.length === 0) {
+        box.innerHTML = '<p class="text-xs text-gray-400 text-center py-4 w-full">Chưa có chủ đề nào.</p>';
+        return;
+    }
+
+    box.innerHTML = '';
+    const colors = [
+        'bg-blue-50 text-blue-600 hover:bg-blue-100',
+        'bg-green-50 text-green-600 hover:bg-green-100',
+        'bg-purple-50 text-purple-600 hover:bg-purple-100',
+        'bg-orange-50 text-orange-600 hover:bg-orange-100',
+        'bg-pink-50 text-pink-600 hover:bg-pink-100',
+        'bg-cyan-50 text-cyan-600 hover:bg-cyan-100',
+        'bg-yellow-50 text-yellow-700 hover:bg-yellow-100',
+        'bg-red-50 text-red-500 hover:bg-red-100'
+    ];
+
+    sorted.slice(0, 15).forEach((tag, idx) => {
+        const colorClass = colors[idx % colors.length];
+        const btn = document.createElement('button');
+        btn.className = 'text-xs font-medium px-3 py-1.5 rounded-full transition cursor-pointer ' + colorClass;
+        btn.textContent = tag + ' (' + tagCounts[tag] + ')';
+        btn.onclick = () => {
+            const input = document.getElementById('searchInput');
+            if (input) input.value = tag;
+            searchPosts();
+        };
+        box.appendChild(btn);
+    });
+}

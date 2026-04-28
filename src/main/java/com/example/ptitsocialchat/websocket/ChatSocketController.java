@@ -1,11 +1,7 @@
 package com.example.ptitsocialchat.websocket;
 
 import com.example.ptitsocialchat.dto.MessageDTO;
-import com.example.ptitsocialchat.entity.Conversation;
-import com.example.ptitsocialchat.entity.ConversationMember;
-import com.example.ptitsocialchat.entity.Message;
 import com.example.ptitsocialchat.entity.User;
-import com.example.ptitsocialchat.repository.ConversationMemberRepository;
 import com.example.ptitsocialchat.service.ChatService;
 import com.example.ptitsocialchat.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +10,7 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
-import java.util.List;
+import java.time.LocalDateTime;
 
 @Controller
 public class ChatSocketController {
@@ -29,36 +25,47 @@ public class ChatSocketController {
     private UserService userService;
 
     @Autowired
-    private ConversationMemberRepository conversationMemberRepository;
+    private com.example.ptitsocialchat.repository.FriendRepository friendRepository;
 
     @MessageMapping("/chat")
     public void processMessage(@Payload MessageDTO messageDTO) {
         User sender = userService.findByUsername(messageDTO.getSenderUsername()).orElseThrow();
-        
-        Conversation conversation;
-        if (messageDTO.getConversationId() != null) {
-            conversation = chatService.getConversation(messageDTO.getConversationId())
-                    .orElseThrow(() -> new RuntimeException("Conversation not found"));
-        } else if (messageDTO.getReceiverUsername() != null) {
-            User receiver = userService.findByUsername(messageDTO.getReceiverUsername()).orElseThrow();
-            conversation = chatService.getOrCreateConversation(sender, receiver);
-        } else {
-            throw new RuntimeException("Conversation ID or Receiver Username must be provided");
+        User receiver = userService.findByUsername(messageDTO.getReceiverUsername()).orElseThrow();
+
+        if (friendRepository.findByUserAndFriend(sender, receiver).isEmpty()) {
+            return; // Ignore message if not friends
         }
 
-        Message savedMsg = chatService.saveMessage(sender, conversation, messageDTO.getContent(), messageDTO.getImageUrl());
-
-        // Cập nhật DTO với thông tin từ database
+        com.example.ptitsocialchat.entity.Message savedMsg = chatService.saveMessage(sender, receiver, messageDTO.getContent(), messageDTO.getImageUrl());
+        
+        // Gán ID từ database vào DTO để gửi lại cho người dùng
         messageDTO.setId(savedMsg.getId());
-        messageDTO.setTimestamp(savedMsg.getTimestamp());
-        messageDTO.setConversationId(conversation.getId());
+        messageDTO.setTimestamp(java.time.LocalDateTime.now());
 
-        // Lấy tất cả thành viên của cuộc hội thoại
-        List<ConversationMember> members = conversationMemberRepository.findByConversation(conversation);
+        // Gửi đến người nhận
+        messagingTemplate.convertAndSend(
+                "/topic/messages/" + messageDTO.getReceiverUsername(),
+                messageDTO);
         
-        // Gửi tin nhắn đến topic cá nhân của TẤT CẢ thành viên (để cập nhật UI cho cả người gửi và người nhận)
-        for (ConversationMember member : members) {
-            messagingTemplate.convertAndSend("/topic/messages/" + member.getUser().getUsername(), messageDTO);
-        }
+        // Gửi ngược lại cho người gửi để đồng bộ ID
+        messagingTemplate.convertAndSend(
+                "/topic/messages/" + messageDTO.getSenderUsername(),
+                messageDTO);
+    }
+
+    @MessageMapping("/chat/group")
+    public void processGroupMessage(@Payload MessageDTO messageDTO) {
+        User sender = userService.findByUsername(messageDTO.getSenderUsername()).orElseThrow();
+        com.example.ptitsocialchat.entity.Conversation conv = chatService.getConversation(messageDTO.getConversationId()).orElseThrow();
+
+        com.example.ptitsocialchat.entity.Message savedMsg = chatService.saveGroupMessage(sender, conv, messageDTO.getContent(), messageDTO.getImageUrl());
+        
+        // Đồng bộ ID và timestamp từ database
+        messageDTO.setId(savedMsg.getId());
+        messageDTO.setTimestamp(java.time.LocalDateTime.now());
+
+        messagingTemplate.convertAndSend(
+                "/topic/conversation/" + messageDTO.getConversationId(),
+                messageDTO);
     }
 }

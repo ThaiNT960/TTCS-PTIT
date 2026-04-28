@@ -106,14 +106,32 @@ function renderStrangerActions(container, targetData) {
     let btnHtml = '';
     if (targetData.friendshipStatus === 'NONE') {
         btnHtml = `<button onclick="sendFriendRequest('${targetData.username}')" class="flex items-center gap-2 bg-primary text-white rounded-full px-6 py-2 text-sm font-bold hover:bg-primary-dark transition shadow-md"><i class="fas fa-user-plus"></i> Kết bạn</button>`;
-    } else if (targetData.friendshipStatus === 'PENDING_SENT') {
+    } else if (targetData.friendshipStatus === 'REQUEST_SENT') {
         btnHtml = `<button class="flex items-center gap-2 bg-gray-100 text-gray-500 rounded-full px-5 py-2 text-sm font-bold opacity-80 cursor-not-allowed"><i class="fas fa-clock"></i> Đã gửi yêu cầu</button>`;
-    } else if (targetData.friendshipStatus === 'PENDING_RECEIVED') {
+    } else if (targetData.friendshipStatus === 'REQUEST_RECEIVED') {
         btnHtml = `<button onclick="window.location.href='friend.html'" class="flex items-center gap-2 bg-blue-600 text-white rounded-full px-5 py-2 text-sm font-bold hover:bg-blue-700 transition shadow-md">Phản hồi yêu cầu</button>`;
-    } else if (targetData.friendshipStatus === 'FRIENDS') {
+    } else if (targetData.friendshipStatus === 'FRIEND') {
         btnHtml = `<button class="flex items-center gap-2 bg-gray-100 text-gray-700 rounded-full px-5 py-2 text-sm font-bold hover:bg-gray-200 transition"><i class="fas fa-user-check text-green-600"></i> Bạn bè</button>`;
     }
     container.innerHTML = btnHtml + `<button onclick="window.location.href='chat.html?target=${targetData.username}'" class="flex items-center gap-2 border border-gray-200 rounded-full px-5 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition shadow-sm"><i class="fab fa-facebook-messenger"></i> Nhắn tin</button>`;
+}
+
+async function sendFriendRequest(targetUsername) {
+    const user = checkAuth();
+    try {
+        const res = await fetch(`${API_URL}/friends/request`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ senderUsername: user.username, receiverUsername: targetUsername })
+        });
+        if (res.ok) {
+            alert('Đã gửi lời mời kết bạn!');
+            loadProfileDynamic(user, targetUsername);
+        } else {
+            const errText = await res.text();
+            alert('Lỗi: ' + errText);
+        }
+    } catch(e) { console.error(e); alert('Lỗi kết nối.'); }
 }
 
 window.renderCommentsHtml = function(postId, comments) {
@@ -212,6 +230,27 @@ async function loadPosts(viewer, targetUsername) {
 
         userPosts.forEach(post => {
             const initials = (post.fullName || post.username || '?').charAt(0).toUpperCase();
+            
+            // Reaction Logic from PTIT
+            const currentReaction = post.currentReaction;
+            let totalReactionCount = 0;
+            if (post.reactionCounts) {
+                Object.values(post.reactionCounts).forEach(count => { totalReactionCount += count; });
+            } else { totalReactionCount = post.likeCount || 0; }
+            
+            const reactionIconMap = { 
+                'LIKE': '<i class="fas fa-thumbs-up"></i> Thích', 
+                'HAHA': '<i class="far fa-laugh-squint"></i> Haha', 
+                'SAD': '<i class="far fa-sad-tear"></i> Buồn', 
+                'ANGRY': '<i class="far fa-angry"></i> Phẫn nộ' 
+            };
+            let currentReactHtml = '<i class="far fa-heart"></i> Thích';
+            let currentBtnClass = 'text-gray-500';
+            if (currentReaction && currentReaction !== 'NONE') {
+                currentReactHtml = reactionIconMap[currentReaction] || `<i class="fas fa-thumbs-up"></i> ${currentReaction}`;
+                currentBtnClass = `curr-${currentReaction}`;
+            }
+
             const div = document.createElement('div');
             div.id = `post-${post.id}`;
             div.className = 'bg-white rounded-2xl shadow-sm mb-4 overflow-hidden fade-up';
@@ -229,19 +268,8 @@ async function loadPosts(viewer, targetUsername) {
             }
 
             const isOwner = post.username === viewer.username;
-            const currentReaction = post.currentReaction;
-            let totalReactionCount = 0;
-            if (post.reactionCounts) {
-                Object.values(post.reactionCounts).forEach(count => { totalReactionCount += count; });
-            } else { totalReactionCount = post.likeCount || 0; }
-            
-            const reactionIconMap = { 'LIKE': '<i class="fas fa-thumbs-up"></i> Thích', 'HAHA': '<i class="far fa-laugh-squint"></i> Haha', 'SAD': '<i class="far fa-sad-tear"></i> Buồn', 'ANGRY': '<i class="far fa-angry"></i> Phẫn nộ' };
-            let currentReactHtml = '<i class="far fa-heart"></i> Thích';
-            let currentBtnClass = 'text-gray-500';
-            if (currentReaction && currentReaction !== 'NONE') {
-                currentReactHtml = reactionIconMap[currentReaction] || `<i class="fas fa-thumbs-up"></i> ${currentReaction}`;
-                currentBtnClass = `curr-${currentReaction}`;
-            }
+            const liked = post.liked;
+            const likeCount = post.likeCount || 0;
 
             div.innerHTML = `
                 <div class="p-5">
@@ -260,7 +288,7 @@ async function loadPosts(viewer, targetUsername) {
                     <div class="flex items-center justify-between text-xs text-gray-500 mb-3 px-1 border-b border-gray-100 pb-3">
                         <div class="flex items-center gap-1 cursor-pointer hover:underline" onclick="showReactionList(${post.id})">
                             <span class="text-primary bg-primary bg-opacity-10 rounded-full w-5 h-5 flex items-center justify-center text-[10px]"><i class="fas fa-thumbs-up"></i></span>
-                            <span>${totalReactionCount}</span>
+                            <span>${totalReactionCount} lượt thích</span>
                         </div>
                         <div class="cursor-pointer hover:underline" onclick="toggleComments(${post.id})"><span>${(post.comments || []).length} bình luận</span></div>
                     </div>
@@ -269,9 +297,9 @@ async function loadPosts(viewer, targetUsername) {
                     <div class="flex-1 reaction-container">
                         <div class="reaction-menu">
                             <span class="reaction-icon emoji-like" onclick="reactToPost(${post.id}, 'LIKE')"><i class="fas fa-thumbs-up"></i></span>
-                            <span class="reaction-icon emoji-haha" onclick="reactToPost(${post.id}, 'HAHA')"><i class="fas fa-laugh-squint"></i></span>
-                            <span class="reaction-icon emoji-sad" onclick="reactToPost(${post.id}, 'SAD')"><i class="fas fa-sad-tear"></i></span>
-                            <span class="reaction-icon emoji-angry" onclick="reactToPost(${post.id}, 'ANGRY')"><i class="fas fa-angry"></i></span>
+                            <span class="reaction-icon emoji-haha" onclick="reactToPost(${post.id}, 'HAHA')"><i class="far fa-laugh-squint"></i></span>
+                            <span class="reaction-icon emoji-sad" onclick="reactToPost(${post.id}, 'SAD')"><i class="far fa-sad-tear"></i></span>
+                            <span class="reaction-icon emoji-angry" onclick="reactToPost(${post.id}, 'ANGRY')"><i class="far fa-angry"></i></span>
                         </div>
                         <button onclick="reactToPost(${post.id}, '${currentReaction === 'LIKE' ? 'NONE' : 'LIKE'}')" class="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-semibold transition hover:bg-gray-50 ${currentBtnClass}">${currentReactHtml}</button>
                     </div>
@@ -299,7 +327,7 @@ function toggleComments(postId) {
 async function reactToPost(postId, reactionType) {
     const user = checkAuth();
     try {
-        await fetch(`${API_URL}/posts/${postId}/reaction`, {
+        await fetch(`${API_URL}/posts/${postId}/like`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: user.username, reactionType })
@@ -341,19 +369,40 @@ async function deletePost(postId) {
     } catch (e) { console.error(e); }
 }
 
-function showReactionList(postId) {
-    // Để giữ profile.html đơn giản, tạm thời có thể bỏ qua Modal danh sách hoặc dùng alert
-    // Trong môi trường hoàn chỉnh nên thêm usersModal vào profile.html giống home.html
+async function showReactionList(postId) {
+    document.getElementById('usersModalTitle').textContent = 'Người đã bày tỏ cảm xúc';
+    const body = document.getElementById('usersModalBody');
+    body.innerHTML = '<p class="text-center text-gray-400 text-sm">Đang tải...</p>';
+    document.getElementById('usersModal').classList.remove('hidden');
+    try {
+        const res = await fetch(`${API_URL}/posts/${postId}/reactions`);
+        const users = await res.json();
+        if(!users || users.length === 0) {
+            body.innerHTML = '<p class="text-center text-gray-400 text-sm">Chưa có ai bày tỏ cảm xúc</p>';
+            return;
+        }
+        const iconMap = { 'LIKE': '<i class="fas fa-thumbs-up text-blue-500"></i>', 'HAHA': '<i class="fas fa-laugh-squint text-yellow-500"></i>', 'SAD': '<i class="fas fa-sad-tear text-yellow-500"></i>', 'ANGRY': '<i class="fas fa-angry text-red-500"></i>' };
+        body.innerHTML = users.map(u => `
+            <div class="flex items-center justify-between mb-3">
+                <a href="profile.html?username=${u.username}" class="flex items-center gap-3 no-underline hover:opacity-80">
+                    <div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold relative overflow-hidden">
+                        ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : (u.fullName||u.username).charAt(0).toUpperCase()}
+                        <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 text-[10px]">${iconMap[u.reactionType] || iconMap['LIKE']}</div>
+                    </div>
+                    <span class="font-semibold text-sm text-gray-900">${u.fullName || u.username}</span>
+                </a>
+            </div>`).join('');
+    } catch (e) { body.innerHTML = '<p class="text-center text-red-400 text-sm">Lỗi tải dữ liệu</p>'; }
 }
 
-async function uploadFile(fileInput) {
+async function uploadFile(fileInput, endpoint) {
     if (!fileInput.files || fileInput.files.length === 0) return null;
     const formData = new FormData();
-    formData.append('file', fileInput.files[0]);
-    const res = await fetch(`${API_URL}/upload`, { method: 'POST', body: formData });
+    formData.append('imageFile', fileInput.files[0]);
+    const res = await fetch(`${API_URL}/upload/${endpoint}`, { method: 'POST', body: formData });
     if (res.ok) {
         const data = await res.json();
-        return data.url;
+        return data.imageUrl;
     }
     return null;
 }
@@ -368,7 +417,10 @@ async function saveProfile() {
         const avatarFile = document.getElementById('editAvatarFile');
         const coverFile = document.getElementById('editCoverFile');
         
-        const [newAv, newCv] = await Promise.all([uploadFile(avatarFile), uploadFile(coverFile)]);
+        const [newAv, newCv] = await Promise.all([
+            uploadFile(avatarFile, 'avatar'), 
+            uploadFile(coverFile, 'cover')
+        ]);
 
         const updateData = {
             fullName: document.getElementById('editFullName').value,

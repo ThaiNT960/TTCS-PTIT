@@ -63,4 +63,12 @@ public class FriendController {
                 })
                 .collect(Collectors.toList());
     }
+
+    @DeleteMapping("/unfriend/{targetUsername}")
+    public ResponseEntity<?> unfriend(@PathVariable String targetUsername, @RequestParam String username) {
+        User current = userService.findByUsername(username).orElseThrow();
+        User target = userService.findByUsername(targetUsername).orElseThrow();
+        friendService.unfriend(current, target);
+        return ResponseEntity.ok(Map.of("status", "ok"));
+    }
 }

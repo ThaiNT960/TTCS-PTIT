@@ -11,4 +11,6 @@ import java.util.Optional;
 @Repository
 public interface CommentReactionRepository extends JpaRepository<CommentReaction, Long> {
     Optional<CommentReaction> findByCommentAndUser(Comment comment, User user);
+    void deleteByCommentAndUser(Comment comment, User user);
+    long countByComment(Comment comment);
 }

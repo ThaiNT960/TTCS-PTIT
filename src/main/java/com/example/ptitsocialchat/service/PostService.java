@@ -1,14 +1,18 @@
 package com.example.ptitsocialchat.service;
 
 import com.example.ptitsocialchat.dto.PostDTO;
-import com.example.ptitsocialchat.entity.*;
-import com.example.ptitsocialchat.repository.*;
+import com.example.ptitsocialchat.entity.Comment;
+import com.example.ptitsocialchat.entity.Post;
+import com.example.ptitsocialchat.entity.PostLike;
+import com.example.ptitsocialchat.entity.User;
+import com.example.ptitsocialchat.repository.CommentRepository;
+import com.example.ptitsocialchat.repository.PostLikeRepository;
+import com.example.ptitsocialchat.repository.PostRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -23,93 +27,162 @@ public class PostService {
     @Autowired
     private PostLikeRepository postLikeRepository;
     @Autowired
-    private FriendRepository friendRepository;
-    @Autowired
-    private PostMediaRepository postMediaRepository;
+    private com.example.ptitsocialchat.repository.PostMediaRepository postMediaRepository;
     @Autowired
     private NotificationService notificationService;
     @Autowired
-    private CommentReactionRepository commentReactionRepository;
+    private ModerationService moderationService;
+    @Autowired
+    private com.example.ptitsocialchat.repository.ModerationSettingsRepository moderationSettingsRepository;
+    @Autowired
+    private com.example.ptitsocialchat.repository.CommentReactionRepository commentReactionRepository;
 
-    public Post createPost(String content, List<String> mediaUrls, User user) {
+    /**
+     * DTO chứa kết quả trả về sau khi tạo bài viết, bao gồm trạng thái kiểm duyệt
+     */
+    public static class CreatePostResult {
+        private String status; // Trạng thái: APPROVED (Đã duyệt), PENDING (Chờ duyệt), REJECTED (Từ chối)
+        private String message; // Thông báo chi tiết gửi về cho client
+        private String label; // Nhãn kiểm duyệt AI (ví dụ: CLEAN, OFFENSIVE)
+
+
+        public CreatePostResult(String status, String message, String label) {
+            this.status = status;
+            this.message = message;
+            this.label = label;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+    }
+
+    public CreatePostResult createPost(String content, String imageUrl, User user) {
         Post post = new Post();
         post.setContent(content);
+        post.setImageUrl(imageUrl);
         post.setUser(user);
         post.setCreatedAt(LocalDateTime.now());
-        Post savedPost = postRepository.save(post);
 
-        if (mediaUrls != null && !mediaUrls.isEmpty()) {
-            for (String url : mediaUrls) {
-                PostMedia media = new PostMedia();
-                media.setPost(savedPost);
-                media.setMediaUrl(url);
-                if (url.toLowerCase().endsWith(".mp4") || url.toLowerCase().endsWith(".webm")) {
-                    media.setMediaType(com.example.ptitsocialchat.enums.MediaType.VIDEO);
-                } else {
-                    media.setMediaType(com.example.ptitsocialchat.enums.MediaType.IMAGE);
-                }
-                postMediaRepository.save(media);
+        String mode = "MANUAL";
+        String aiServiceUrl = "http://localhost:8000";
+        var settingsList = moderationSettingsRepository.findAll();
+        if (!settingsList.isEmpty()) {
+            mode = settingsList.get(0).getMode();
+            aiServiceUrl = settingsList.get(0).getAiServiceUrl();
+        }
+
+        if ("NONE".equals(mode)) {
+            // Không kiểm duyệt → duyệt ngay
+            post.setStatus("APPROVED");
+            postRepository.save(post);
+            return new CreatePostResult("APPROVED", "Đăng bài thành công!", null);
+
+        } else if ("MANUAL".equals(mode)) {
+            // Kiểm duyệt thủ công → chờ admin
+            post.setStatus("PENDING");
+            postRepository.save(post);
+            return new CreatePostResult("PENDING",
+                    "Bài viết đang chờ Admin kiểm duyệt trước khi hiển thị.", null);
+
+        } else if ("AUTO_AI".equals(mode)) {
+            // Kiểm duyệt AI tự động
+            // Nếu chỉ có ảnh (content rỗng) → AI không phân tích được → tự động duyệt
+            if (content == null || content.trim().isEmpty()) {
+                post.setStatus("APPROVED");
+                postRepository.save(post);
+                return new CreatePostResult("APPROVED", "Đăng bài thành công!", null);
+            }
+            ModerationService.ModerationResult aiResult = moderationService.moderate(content, aiServiceUrl);
+
+            if (!aiResult.isSuccess()) {
+                // AI service lỗi → fallback: chờ duyệt thủ công
+                System.err.println("[PostService] AI service failed: " + aiResult.getErrorMessage());
+                post.setStatus("PENDING");
+                postRepository.save(post);
+                return new CreatePostResult("PENDING",
+                        "AI Moderation tạm thời không khả dụng. Bài viết đang chờ kiểm duyệt thủ công.",
+                        null);
+            }
+
+            post.setModerationLabel(aiResult.getLabel());
+            post.setModerationConfidence(aiResult.getConfidence());
+
+            if (aiResult.isToxic()) {
+                // Nội dung toxic → TỰ ĐỘNG TỪ CHỐI
+                post.setStatus("REJECTED");
+                postRepository.save(post);
+                String labelVi = "OFFENSIVE".equals(aiResult.getLabel()) ? "Xúc phạm" : "Thù ghét";
+                return new CreatePostResult("REJECTED",
+                        "Bài viết bị từ chối tự động. Nội dung được phát hiện: " + labelVi
+                                + " (độ tin cậy: " + Math.round(aiResult.getConfidence() * 100) + "%).",
+                        aiResult.getLabel());
+            } else {
+                // Nội dung sạch → TỰ ĐỘNG DUYỆT
+                post.setStatus("APPROVED");
+                postRepository.save(post);
+                return new CreatePostResult("APPROVED", "Đăng bài thành công!", aiResult.getLabel());
             }
         }
-        return savedPost;
+
+        // Fallback
+        post.setStatus("PENDING");
+        postRepository.save(post);
+        return new CreatePostResult("PENDING", "Bài viết đang chờ kiểm duyệt.", null);
     }
 
-    public List<PostDTO> getAllPosts() {
-        return getAllPosts(null);
-    }
-
-    public List<PostDTO> getAllPosts(User currentUser) {
-        if (currentUser == null) {
-            return postRepository.findAllByOrderByCreatedAtDesc().stream()
-                    .map(post -> convertToDTO(post, null))
-                    .collect(Collectors.toList());
+    public List<PostDTO> getAllPosts(User currentUser, String search) {
+        List<Post> posts;
+        if (search != null && !search.trim().isEmpty()) {
+            posts = postRepository.findByStatusAndContentContainingIgnoreCaseOrderByCreatedAtDesc("APPROVED",
+                    search.trim());
+        } else {
+            posts = postRepository.findByStatusOrderByCreatedAtDesc("APPROVED");
         }
-        List<User> usersToFetch = friendRepository.findByUser(currentUser).stream()
-                .map(friend -> friend.getFriend())
-                .collect(Collectors.toList());
-        usersToFetch.add(currentUser);
-        return postRepository.findByUserInOrderByCreatedAtDesc(usersToFetch).stream()
+        return posts.stream()
                 .map(post -> convertToDTO(post, currentUser))
                 .collect(Collectors.toList());
     }
 
-    public List<PostDTO> getUserPosts(User targetUser, User viewer) {
-        return postRepository.findByUserOrderByCreatedAtDesc(targetUser).stream()
-                .map(post -> convertToDTO(post, viewer))
-                .collect(Collectors.toList());
-    }
-
-    public List<PostDTO> searchPosts(String keyword, User currentUser) {
-        return postRepository.findByContentContainingIgnoreCaseOrderByCreatedAtDesc(keyword).stream()
+    public List<PostDTO> getAllPostsForAdmin(User currentUser) {
+        return postRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(post -> convertToDTO(post, currentUser))
                 .collect(Collectors.toList());
     }
 
-    public Comment addComment(Long postId, String content, Long parentCommentId, User user) {
+    public List<PostDTO> getPostsByStatus(String status, User currentUser) {
+        return postRepository.findByStatusOrderByCreatedAtDesc(status).stream()
+                .map(post -> convertToDTO(post, currentUser))
+                .collect(Collectors.toList());
+    }
+
+    public List<PostDTO> getPostsByUser(User targetUser, User viewerUser) {
+        return postRepository.findByUserAndStatusOrderByCreatedAtDesc(targetUser, "APPROVED").stream()
+                .map(post -> convertToDTO(post, viewerUser))
+                .collect(Collectors.toList());
+    }
+
+    public Comment addComment(Long postId, String content, User user, Long parentId) {
         Post post = postRepository.findById(postId).orElseThrow();
         Comment comment = new Comment();
         comment.setContent(content);
+        if (parentId != null) {
+            comment.setParentCommentId(parentId);
+        }
         comment.setPost(post);
         comment.setUser(user);
-        comment.setParentCommentId(parentCommentId);
         comment.setCreatedAt(LocalDateTime.now());
-        Comment saved = commentRepository.save(comment);
-
-        // Thông báo cho chủ bài viết
-        if (!post.getUser().getId().equals(user.getId())) {
-            notificationService.createNotification(post.getUser(), user, com.example.ptitsocialchat.enums.NotificationType.COMMENT_POST, "/profile.html?username=" + post.getUser().getUsername());
-        }
-
-        // Nếu là trả lời bình luận, thông báo cho người viết bình luận gốc
-        if (parentCommentId != null) {
-            commentRepository.findById(parentCommentId).ifPresent(parentComment -> {
-                if (!parentComment.getUser().getId().equals(user.getId()) && !parentComment.getUser().getId().equals(post.getUser().getId())) {
-                    notificationService.createNotification(parentComment.getUser(), user, com.example.ptitsocialchat.enums.NotificationType.COMMENT_POST, "/profile.html?username=" + post.getUser().getUsername());
-                }
-            });
-        }
-
-        return saved;
+        Comment savedComment = commentRepository.save(comment);
+        notificationService.createNotification(post.getUser(), user, com.example.ptitsocialchat.enums.NotificationType.COMMENT, "home.html#post-" + postId);
+        return savedComment;
     }
 
     @Transactional
@@ -143,8 +216,8 @@ public class PostService {
             isNewReaction = true;
         }
 
-        if (isNewReaction) {
-            notificationService.createNotification(post.getUser(), user, com.example.ptitsocialchat.enums.NotificationType.LIKE_POST, "/profile.html?username=" + post.getUser().getUsername());
+        if (isNewReaction && !post.getUser().getId().equals(user.getId())) {
+            notificationService.createNotification(post.getUser(), user, com.example.ptitsocialchat.enums.NotificationType.LIKE, "home.html#post-" + postId);
         }
         return isNewReaction;
     }
@@ -152,7 +225,7 @@ public class PostService {
     @Transactional
     public boolean reactToComment(Long commentId, User user, String reactionType) {
         Comment comment = commentRepository.findById(commentId).orElseThrow();
-        Optional<CommentReaction> existing = commentReactionRepository.findByCommentAndUser(comment, user);
+        Optional<com.example.ptitsocialchat.entity.CommentReaction> existing = commentReactionRepository.findByCommentAndUser(comment, user);
         
         boolean isNewReaction = false;
         if (reactionType == null || reactionType.trim().isEmpty() || reactionType.equalsIgnoreCase("NONE")) {
@@ -161,7 +234,7 @@ public class PostService {
         }
 
         if (existing.isPresent()) {
-            CommentReaction reaction = existing.get();
+            com.example.ptitsocialchat.entity.CommentReaction reaction = existing.get();
             if (reactionType.equals(reaction.getReactionType().name())) {
                 commentReactionRepository.delete(reaction);
                 return false;
@@ -171,7 +244,7 @@ public class PostService {
                 isNewReaction = true;
             }
         } else {
-            CommentReaction reaction = new CommentReaction();
+            com.example.ptitsocialchat.entity.CommentReaction reaction = new com.example.ptitsocialchat.entity.CommentReaction();
             reaction.setComment(comment);
             reaction.setUser(user);
             reaction.setReactionType(com.example.ptitsocialchat.enums.ReactionType.valueOf(reactionType));
@@ -179,51 +252,54 @@ public class PostService {
             isNewReaction = true;
         }
 
-        // Notify comment owner
         if (isNewReaction && !comment.getUser().getId().equals(user.getId())) {
-            notificationService.createNotification(comment.getUser(), user, com.example.ptitsocialchat.enums.NotificationType.LIKE_POST, "/profile.html?username=" + comment.getPost().getUser().getUsername());
+            notificationService.createNotification(comment.getUser(), user, com.example.ptitsocialchat.enums.NotificationType.LIKE, "home.html#post-" + comment.getPost().getId());
         }
         return isNewReaction;
     }
 
+    public List<PostDTO.ReactionUserDTO> getPostReactions(Long postId) {
+        Post post = postRepository.findById(postId).orElseThrow();
+        return post.getLikes().stream().map(l -> {
+            PostDTO.ReactionUserDTO dto = new PostDTO.ReactionUserDTO();
+            dto.setUsername(l.getUser().getUsername());
+            dto.setFullName(l.getUser().getFullName());
+            dto.setAvatar(l.getUser().getAvatar());
+            dto.setReactionType(l.getReactionType() != null ? l.getReactionType() : "LIKE");
+            return dto;
+        }).collect(Collectors.toList());
+    }
+
     public void deletePost(Long postId, User user) {
         Post post = postRepository.findById(postId).orElseThrow();
-        if (!post.getUser().getId().equals(user.getId())) {
+        if (!post.getUser().getId().equals(user.getId()) && !"ROLE_ADMIN".equals(user.getRole())) {
             throw new RuntimeException("Bạn không có quyền xóa bài viết này");
         }
         postRepository.delete(post);
     }
 
-    public List<Map<String, Object>> getPostReactions(Long postId) {
+    public long getLikeCount(Long postId) {
         Post post = postRepository.findById(postId).orElseThrow();
-        return post.getLikes().stream().map(like -> {
-            Map<String, Object> reactionData = new java.util.HashMap<>();
-            reactionData.put("reactionType", like.getReactionType() != null ? like.getReactionType() : "LIKE");
-            reactionData.put("username", like.getUser().getUsername());
-            reactionData.put("fullName", like.getUser().getFullName());
-            reactionData.put("avatar", like.getUser().getAvatar());
-            return reactionData;
-        }).collect(Collectors.toList());
+        return postLikeRepository.countByPost(post);
     }
 
     private PostDTO convertToDTO(Post post, User currentUser) {
         PostDTO dto = new PostDTO();
         dto.setId(post.getId());
         dto.setContent(post.getContent());
+        dto.setImageUrl(post.getImageUrl());
+        dto.setVideoUrl(post.getVideoUrl());
+        dto.setCheckInLocation(post.getCheckInLocation());
+        dto.setPrivacy(post.getPrivacy() != null ? post.getPrivacy().name() : "PUBLIC");
         dto.setCreatedAt(post.getCreatedAt());
         dto.setUsername(post.getUser().getUsername());
         dto.setFullName(post.getUser().getFullName());
         dto.setAvatar(post.getUser().getAvatar());
-        dto.setVideoUrl(post.getVideoUrl());
-        dto.setCheckInLocation(post.getCheckInLocation());
-        dto.setPrivacy(post.getPrivacy() != null ? post.getPrivacy().name() : "PUBLIC");
         
         if (post.getMedia() != null) {
             dto.setMediaUrls(post.getMedia().stream()
-                .map(PostMedia::getMediaUrl)
+                .map(com.example.ptitsocialchat.entity.PostMedia::getMediaUrl)
                 .collect(Collectors.toList()));
-        } else {
-            dto.setMediaUrls(new ArrayList<>());
         }
 
         Map<String, Long> reactionCounts = post.getLikes().stream()
@@ -236,15 +312,20 @@ public class PostService {
             dto.setLiked(currentLike.isPresent());
             dto.setCurrentReaction(currentLike.map(l -> l.getReactionType() != null ? l.getReactionType() : "LIKE").orElse(null));
         }
+
+        dto.setStatus(post.getStatus());
+        dto.setModerationLabel(post.getModerationLabel());
+        dto.setModerationConfidence(post.getModerationConfidence());
+        
         dto.setComments(post.getComments().stream().map(c -> {
             PostDTO.CommentDTO cdto = new PostDTO.CommentDTO();
             cdto.setId(c.getId());
             cdto.setContent(c.getContent());
+            cdto.setImageUrl(c.getImageUrl());
             cdto.setCreatedAt(c.getCreatedAt());
             cdto.setUsername(c.getUser().getUsername());
             cdto.setFullName(c.getUser().getFullName());
             cdto.setParentCommentId(c.getParentCommentId());
-            cdto.setImageUrl(c.getImageUrl());
             
             if (c.getReactions() != null) {
                 Map<String, Long> cReactionCounts = c.getReactions().stream()
@@ -253,15 +334,11 @@ public class PostService {
                 cdto.setLikeCount(c.getReactions().size());
 
                 if (currentUser != null) {
-                    Optional<CommentReaction> currentCReac = c.getReactions().stream()
+                    Optional<com.example.ptitsocialchat.entity.CommentReaction> currentCReac = c.getReactions().stream()
                         .filter(r -> r.getUser().getId().equals(currentUser.getId())).findFirst();
                     cdto.setCurrentReaction(currentCReac.map(r -> r.getReactionType().name()).orElse(null));
                 }
-            } else {
-                cdto.setReactionCounts(new java.util.HashMap<>());
-                cdto.setLikeCount(0);
             }
-            
             return cdto;
         }).collect(Collectors.toList()));
         return dto;

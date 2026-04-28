@@ -1,6 +1,5 @@
 package com.example.ptitsocialchat.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -14,8 +13,6 @@ public class Message {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    private String imageUrl; // Thêm trường lưu ảnh
-
     private LocalDateTime timestamp;
 
     @ManyToOne
@@ -23,21 +20,48 @@ public class Message {
     private User sender;
 
     @ManyToOne
+    @JoinColumn(name = "receiver_id")
+    private User receiver;
+
+    @ManyToOne
     @JoinColumn(name = "conversation_id")
-    @JsonIgnore
     private Conversation conversation;
+
+    @Column(name = "image_url")
+    private String imageUrl;
+
+    @Column(name = "is_revoked")
+    private Boolean isRevoked = false;
+
+    @Column(name = "deleted_by_sender")
+    private Boolean deletedBySender = false;
+
+    @Column(name = "deleted_by_receiver")
+    private Boolean deletedByReceiver = false;
 
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
-    public String getImageUrl() { return imageUrl; }
-    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public LocalDateTime getTimestamp() { return timestamp; }
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
     public User getSender() { return sender; }
     public void setSender(User sender) { this.sender = sender; }
+    public User getReceiver() { return receiver; }
+    public void setReceiver(User receiver) { this.receiver = receiver; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    
+    public Boolean getIsRevoked() { return isRevoked; }
+    public void setIsRevoked(Boolean isRevoked) { this.isRevoked = isRevoked; }
+
+    public Boolean getDeletedBySender() { return deletedBySender; }
+    public void setDeletedBySender(Boolean deletedBySender) { this.deletedBySender = deletedBySender; }
+
+    public Boolean getDeletedByReceiver() { return deletedByReceiver; }
+    public void setDeletedByReceiver(Boolean deletedByReceiver) { this.deletedByReceiver = deletedByReceiver; }
+
     public Conversation getConversation() { return conversation; }
     public void setConversation(Conversation conversation) { this.conversation = conversation; }
 }

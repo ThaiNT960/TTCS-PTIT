@@ -7,7 +7,14 @@ import java.util.List;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
     List<Post> findAllByOrderByCreatedAtDesc();
-    List<Post> findByUserInOrderByCreatedAtDesc(List<User> users);
-    List<Post> findByUserOrderByCreatedAtDesc(User user);
-    List<Post> findByContentContainingIgnoreCaseOrderByCreatedAtDesc(String keyword);
+    
+    List<Post> findByStatusOrderByCreatedAtDesc(String status);
+    
+    List<Post> findByStatusAndContentContainingIgnoreCaseOrderByCreatedAtDesc(String status, String content);
+
+    List<Post> findByUserAndStatusOrderByCreatedAtDesc(User user, String status);
+
+    List<Post> findByStatus(String status);
+
+    long countByStatus(String status);
 }

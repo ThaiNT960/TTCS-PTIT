@@ -38,6 +38,23 @@
                 <a href="chat.html" class="nav-link active"><i class="fas fa-comment-dots"></i> Tin nhắn</a>
             </div>
             <div class="flex items-center gap-3 flex-shrink-0 relative">
+                <!-- Notifications -->
+                <div class="relative" id="notiWrap">
+                    <button onclick="toggleNotiMenu()" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-200 transition focus:outline-none relative">
+                        <i class="fas fa-bell text-lg"></i>
+                        <span id="notiBadge" class="hidden absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white">0</span>
+                    </button>
+                    <div id="notiMenu" class="hidden absolute right-0 top-12 bg-white border border-gray-200 rounded-2xl shadow-xl w-80 overflow-hidden z-50">
+                        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                            <h3 class="font-bold text-gray-900">Thông báo</h3>
+                            <button onclick="markAllNotiAsRead()" class="text-xs text-primary font-semibold hover:underline">Đánh dấu tất cả là đã đọc</button>
+                        </div>
+                        <div id="notiList" class="max-h-96 overflow-y-auto custom-scrollbar">
+                            <p class="text-center text-gray-400 text-sm py-8">Đang tải thông báo...</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="relative" id="navAvatarWrap">
                     <button onclick="toggleUserMenu()"
                         class="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-bold focus:outline-none"
@@ -61,15 +78,15 @@
             <div class="bg-white rounded-2xl shadow-sm flex overflow-hidden" style="height:calc(100vh - 88px)">
 
                 <!-- Sidebar -->
-                <div class="w-80 flex-shrink-0 border-r border-gray-100 flex flex-col bg-white">
+                <div class="w-72 flex-shrink-0 border-r border-gray-100 flex flex-col">
                     <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                        <h2 class="text-xl font-bold text-gray-900">Đoạn chat</h2>
-                        <button onclick="openCreateGroupModal()" class="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-600 transition shadow-sm">
+                        <h2 class="text-lg font-bold text-gray-900">Tin nhắn</h2>
+                        <button onclick="openCreateGroupModal()" class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-600 transition shadow-sm">
                             <i class="fas fa-plus"></i>
                         </button>
                     </div>
-                    <div id="conversationsList" class="flex-1 overflow-y-auto custom-scrollbar">
-                        <p class="text-center text-gray-400 text-sm py-12">Đang tải cuộc hội thoại...</p>
+                    <div id="friendsList" class="flex-1 overflow-y-auto p-2">
+                        <p class="text-center text-gray-400 text-sm py-8">Đang tải...</p>
                     </div>
                 </div>
 
@@ -77,11 +94,16 @@
                 <div class="flex-1 flex flex-col overflow-hidden">
                     <!-- Header -->
                     <div id="chatWindowHeader"
-                        class="hidden px-5 py-3.5 border-b border-gray-100 flex items-center gap-3 flex-shrink-0">
-                        <div id="chatPartnerAvatar"
-                            class="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white font-bold text-sm">
-                            ?</div>
-                        <span id="chatTitle" class="font-semibold text-gray-900"></span>
+                        class="hidden px-5 py-3.5 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
+                        <div class="flex items-center gap-3">
+                            <div id="chatPartnerAvatar"
+                                class="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                ?</div>
+                            <span id="chatTitle" class="font-semibold text-gray-900"></span>
+                        </div>
+                        <button onclick="clearHistory()" class="text-gray-400 hover:text-red-500 transition p-2" title="Xóa lịch sử trò chuyện">
+                            <i class="fas fa-broom"></i>
+                        </button>
                     </div>
 
                     <!-- Messages -->
@@ -93,20 +115,23 @@
                     </div>
 
                     <!-- Input -->
-                    <div id="chatInputArea" class="hidden border-t border-gray-100 bg-white flex-shrink-0 flex flex-col">
-                        <div id="chatImagePreviewContainer" class="hidden px-4 pt-3 pb-1 relative border-b border-gray-50">
-                            <div class="relative inline-block">
-                                <img id="chatImagePreview" class="h-20 rounded-lg object-cover border border-gray-200 shadow-sm">
-                                <button type="button" onclick="removeChatImage()" class="absolute -top-2 -right-2 w-5 h-5 bg-black/60 text-white rounded-full text-[10px] hover:bg-black transition flex items-center justify-center">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
+                    <div id="notFriendPlaceholder" class="hidden px-4 py-6 border-t border-gray-100 bg-white flex-shrink-0 text-center text-sm text-gray-500">
+                        Bạn không thể nhắn tin do không còn là bạn bè.
+                    </div>
+                    <div id="chatInputArea" class="hidden px-4 py-3 border-t border-gray-100 bg-white flex-shrink-0">
+                        <div id="imagePreviewContainer" class="hidden mb-2 relative inline-block">
+                            <img id="chatImagePreview" src=""
+                                class="h-20 rounded-lg object-cover border border-gray-200">
+                            <button id="cancelImagePreview"
+                                class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shadow hover:bg-red-600">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
-                        <form id="messageForm" class="flex items-center gap-3 px-4 py-3">
-                            <input type="file" id="chatImageFile" accept="image/*" class="hidden" onchange="previewChatImage(this)">
-                            <button type="button" onclick="document.getElementById('chatImageFile').click()"
-                                class="w-10 h-10 text-gray-400 hover:text-primary hover:bg-gray-50 rounded-full flex items-center justify-center flex-shrink-0 transition">
-                                <i class="fas fa-image text-lg"></i>
+                        <form id="messageForm" class="flex items-center gap-3">
+                            <input type="file" id="chatImageInput" accept="image/*" class="hidden">
+                            <button type="button" id="chatAttachBtn" onclick="document.getElementById('chatImageInput').click()"
+                                class="text-gray-400 hover:text-primary transition p-2 focus:outline-none">
+                                <i class="fas fa-paperclip text-lg"></i>
                             </button>
                             <input type="text" id="messageInput" autocomplete="off"
                                 class="flex-1 bg-gray-100 border border-transparent rounded-full px-4 py-2.5 text-sm focus:outline-none focus:border-primary focus:bg-white transition"
@@ -151,7 +176,13 @@
     <script src="js/auth.js"></script>
     <script src="js/chat.js"></script>
     <script>
-        function toggleUserMenu() { document.getElementById('userMenu').classList.toggle('hidden'); }
+        function toggleUserMenu() { 
+            document.getElementById('userMenu').classList.toggle('hidden');
+            const notiMenu = document.getElementById('notiMenu');
+            if (notiMenu && !notiMenu.classList.contains('hidden')) {
+                notiMenu.classList.add('hidden');
+            }
+        }
         document.addEventListener('click', function (e) {
             if (!document.getElementById('navAvatarWrap').contains(e.target)) document.getElementById('userMenu').classList.add('hidden');
         });

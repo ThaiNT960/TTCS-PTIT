@@ -18,6 +18,28 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/app.css">
+    <style>
+        /* Reaction Styles from PTIT */
+        .reaction-container { position: relative; }
+        .reaction-menu { 
+            position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); 
+            background: white; border-radius: 50px; padding: 4px 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); 
+            display: flex; gap: 8px; opacity: 0; pointer-events: none; transition: 0.2s ease-in-out; 
+            margin-bottom: 8px; z-index: 10; border: 1px solid #f3f4f6;
+        }
+        .reaction-container:hover .reaction-menu { opacity: 1; pointer-events: all; }
+        .reaction-icon { font-size: 24px; cursor: pointer; transition: transform 0.2s; display: inline-block; }
+        .reaction-icon:hover { transform: scale(1.3) translateY(-4px); }
+        .emoji-like { color: #1b74e4; }
+        .emoji-haha { color: #f7b125; }
+        .emoji-sad { color: #f7b125; }
+        .emoji-angry { color: #e9710f; }
+        .current-reaction { font-weight: bold; }
+        .curr-LIKE { color: #1b74e4 !important; }
+        .curr-HAHA { color: #f7b125 !important; }
+        .curr-SAD { color: #f7b125 !important; }
+        .curr-ANGRY { color: #e9710f !important; }
+    </style>
 </head>
 
 <body class="bg-gray-100 font-sans text-gray-900">
@@ -36,6 +58,23 @@
                 <a href="chat.html" class="nav-link"><i class="fas fa-comment-dots"></i> Tin nhắn</a>
             </div>
             <div class="flex items-center gap-3 flex-shrink-0 relative">
+                <!-- Notifications -->
+                <div class="relative" id="notiWrap">
+                    <button onclick="toggleNotiMenu()" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-200 transition focus:outline-none relative">
+                        <i class="fas fa-bell text-lg"></i>
+                        <span id="notiBadge" class="hidden absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white">0</span>
+                    </button>
+                    <div id="notiMenu" class="hidden absolute right-0 top-12 bg-white border border-gray-200 rounded-2xl shadow-xl w-80 overflow-hidden z-50">
+                        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                            <h3 class="font-bold text-gray-900">Thông báo</h3>
+                            <button onclick="markAllNotiAsRead()" class="text-xs text-primary font-semibold hover:underline">Đánh dấu tất cả là đã đọc</button>
+                        </div>
+                        <div id="notiList" class="max-h-96 overflow-y-auto custom-scrollbar">
+                            <p class="text-center text-gray-400 text-sm py-8">Đang tải thông báo...</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="relative" id="navAvatarWrap">
                     <button onclick="toggleUserMenu()"
                         class="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-bold focus:outline-none"
@@ -206,6 +245,17 @@
         </div>
     </div>
 
+    <!-- Modal Users List -->
+    <div id="usersModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden flex flex-col shadow-xl">
+            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <h3 class="font-bold text-gray-900" id="usersModalTitle">Danh sách</h3>
+                <button onclick="closeUsersModal()" class="text-gray-400 hover:text-gray-700 p-2"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-4 overflow-y-auto max-h-80" id="usersModalBody"></div>
+        </div>
+    </div>
+
     <a href="chat.html"
         class="fixed bottom-7 right-7 bg-primary hover:bg-primary-dark text-white rounded-full flex items-center justify-center text-xl shadow-lg transition z-40"
         style="width:52px;height:52px">
@@ -215,10 +265,19 @@
     <script src="js/auth.js"></script>
     <script src="js/profile.js"></script>
     <script>
-        function toggleUserMenu() { document.getElementById('userMenu').classList.toggle('hidden'); }
+        function toggleUserMenu() { 
+            document.getElementById('userMenu').classList.toggle('hidden');
+            const notiMenu = document.getElementById('notiMenu');
+            if (notiMenu && !notiMenu.classList.contains('hidden')) {
+                notiMenu.classList.add('hidden');
+            }
+        }
         document.addEventListener('click', function (e) {
             if (!document.getElementById('navAvatarWrap').contains(e.target)) document.getElementById('userMenu').classList.add('hidden');
         });
+        function closeUsersModal() {
+            document.getElementById('usersModal').classList.add('hidden');
+        }
     </script>
 </body>
 

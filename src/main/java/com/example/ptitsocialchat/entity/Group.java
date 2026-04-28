@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import java.util.List;
 
 @Entity
-@Table(name = "groups_table") // 'groups' is a reserved keyword in some SQL dialects
+@Table(name = "groups_table")
 public class Group {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

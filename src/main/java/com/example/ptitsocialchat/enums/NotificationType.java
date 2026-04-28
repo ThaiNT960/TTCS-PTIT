@@ -1,5 +1,5 @@
 package com.example.ptitsocialchat.enums;
 
 public enum NotificationType {
-    LIKE_POST, COMMENT_POST, FRIEND_REQUEST, SYSTEM
+    LIKE, COMMENT, FRIEND_REQUEST, FRIEND_ACCEPT, MENTION, SYSTEM
 }
