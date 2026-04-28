@@ -15,6 +15,25 @@
             }
         }
     </script>
+    <style>
+        .mode-card { transition: all 0.3s ease; cursor: pointer; border: 2px solid transparent; }
+        .mode-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+        .mode-card.active { border-color: #ae1a21; background: linear-gradient(135deg, #fff5f5 0%, #fff 100%); }
+        .mode-card.active .mode-icon { background: #ae1a21; color: white; }
+        .tab-btn { transition: all 0.2s ease; }
+        .tab-btn.active { color: #ae1a21; border-bottom: 3px solid #ae1a21; font-weight: 600; }
+        .status-badge { font-size: 11px; padding: 3px 10px; border-radius: 9999px; font-weight: 600; }
+        .status-approved { background: #dcfce7; color: #166534; }
+        .status-pending { background: #fef9c3; color: #854d0e; }
+        .status-rejected { background: #fee2e2; color: #991b1b; }
+        .ai-status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .ai-online { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+        .ai-offline { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .pulse-glow { animation: pulseGlow 2s infinite; }
+        @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 5px rgba(174,26,33,0.3); } 50% { box-shadow: 0 0 15px rgba(174,26,33,0.6); } }
+    </style>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/app.css">
@@ -22,152 +41,256 @@
 
 <body class="bg-gray-100 font-sans text-gray-900">
 
-    <!-- NAVBAR -->
+    <!-- NAVBAR (giống admin.jsp - chỉ có admin) -->
     <nav class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm" style="height:60px">
-        <div class="max-w-5xl mx-auto px-5 h-full flex items-center justify-between gap-4">
+        <div class="max-w-6xl mx-auto px-5 h-full flex items-center justify-between gap-4">
             <a href="home.html"
                 class="flex items-center gap-2 text-primary font-bold text-lg flex-shrink-0 no-underline">
                 <img src="/img/logo_ptit.svg" alt="PTIT Logo" class="w-10 h-10 object-contain">
                 PTIT Social
             </a>
-            <div class="flex items-center gap-1">
-                <a href="home.html" class="nav-link"><i class="fas fa-home"></i> Trang chủ</a>
-                <a href="friend.html" class="nav-link"><i class="fas fa-user-friends"></i> Bạn bè</a>
-                <a href="chat.html" class="nav-link"><i class="fas fa-comment-dots"></i> Tin nhắn</a>
-                <a href="admin.html" class="nav-link active"><i class="fas fa-shield-alt"></i> Admin</a>
-            </div>
-            <div class="flex items-center gap-3 flex-shrink-0 relative">
-                <div class="relative" id="navAvatarWrap">
-                    <button onclick="toggleUserMenu()"
-                        class="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-bold focus:outline-none"
-                        id="navAvatar">A</button>
-                    <div id="userMenu"
-                        class="hidden absolute right-0 top-12 bg-white border border-gray-200 rounded-xl shadow-lg w-44 overflow-hidden z-50">
-                        <a href="profile.html"
-                            class="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"><i
-                                class="fas fa-user text-primary w-4"></i> Trang cá nhân</a>
-                        <a href="#" onclick="logout()"
-                            class="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"><i
-                                class="fas fa-sign-out-alt text-primary w-4"></i> Đăng xuất</a>
-                    </div>
-                </div>
+            <span class="font-semibold text-primary text-sm"><i class="fas fa-shield-alt mr-1"></i>Bảng Quản Trị</span>
+            <div class="flex items-center gap-3">
+                <a href="#" onclick="logout()" class="text-sm text-gray-600 hover:text-primary no-underline">
+                    <i class="fas fa-sign-out-alt mr-1"></i>Đăng xuất
+                </a>
             </div>
         </div>
     </nav>
 
     <main class="pt-20 pb-10">
-        <div class="max-w-5xl mx-auto px-4">
+        <div class="max-w-6xl mx-auto px-4 space-y-6">
 
-            <!-- Header -->
-            <div class="bg-white rounded-2xl shadow-sm p-6 mb-4">
-                <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                    <i class="fas fa-shield-alt text-primary"></i> Quản trị viên
-                </h1>
+            <!-- MODERATION SETTINGS CARD -->
+            <div class="bg-white rounded-2xl shadow-sm p-5 fade-in">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="font-semibold text-gray-900">
+                        <i class="fas fa-robot text-primary mr-2"></i>Chế độ Kiểm duyệt Bài viết
+                    </h2>
+                    <div class="flex items-center gap-2 text-xs">
+                        <span class="ai-status-dot" id="aiStatusDot"></span>
+                        <span class="font-medium" id="aiStatusText">AI Service: Đang kiểm tra...</span>
+                        <button onclick="checkAiService()" class="text-gray-400 hover:text-primary transition ml-1" title="Kiểm tra lại">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <!-- Mode: NONE -->
+                    <div class="mode-card rounded-xl p-4 bg-gray-50" onclick="setModerationMode('NONE')" id="mode-NONE">
+                        <div class="mode-icon w-10 h-10 rounded-lg flex items-center justify-center mb-3 bg-gray-200 text-gray-500">
+                            <i class="fas fa-unlock text-lg"></i>
+                        </div>
+                        <h3 class="font-semibold text-sm text-gray-900 mb-1">Không kiểm duyệt</h3>
+                        <p class="text-xs text-gray-500">Bài viết hiển thị ngay khi đăng. Không qua bất kỳ bước kiểm tra nào.</p>
+                    </div>
+
+                    <!-- Mode: MANUAL -->
+                    <div class="mode-card rounded-xl p-4 bg-gray-50" onclick="setModerationMode('MANUAL')" id="mode-MANUAL">
+                        <div class="mode-icon w-10 h-10 rounded-lg flex items-center justify-center mb-3 bg-gray-200 text-gray-500">
+                            <i class="fas fa-user-shield text-lg"></i>
+                        </div>
+                        <h3 class="font-semibold text-sm text-gray-900 mb-1">Kiểm duyệt thủ công</h3>
+                        <p class="text-xs text-gray-500">Mọi bài viết phải chờ Admin xét duyệt trước khi hiển thị.</p>
+                    </div>
+
+                    <!-- Mode: AUTO_AI -->
+                    <div class="mode-card rounded-xl p-4 bg-gray-50" onclick="setModerationMode('AUTO_AI')" id="mode-AUTO_AI">
+                        <div class="mode-icon w-10 h-10 rounded-lg flex items-center justify-center mb-3 bg-gray-200 text-gray-500">
+                            <i class="fas fa-brain text-lg"></i>
+                        </div>
+                        <h3 class="font-semibold text-sm text-gray-900 mb-1">Tự động (AI)</h3>
+                        <p class="text-xs text-gray-500">AI PhoBERT tự động phân loại. Clean → duyệt, Toxic → từ chối.</p>
+                    </div>
+                </div>
             </div>
 
-            <!-- Stat Card -->
-            <div class="grid grid-cols-3 gap-4 mb-4">
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-4 gap-4">
                 <div class="bg-white rounded-2xl shadow-sm p-5 flex items-center gap-4">
-                    <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center text-primary text-xl">
-                        <i class="fas fa-users"></i>
+                    <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-users text-primary text-xl"></i>
                     </div>
                     <div>
-                        <div id="statUsers" class="text-2xl font-bold text-gray-900">-</div>
-                        <div class="text-xs text-gray-500 mt-0.5">Người dùng</div>
+                        <p class="text-gray-500 text-sm">Người dùng</p>
+                        <p class="font-bold text-2xl text-gray-900" id="statUsers">-</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm p-5 flex items-center gap-4">
+                    <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-file-alt text-blue-500 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-sm">Tổng bài viết</p>
+                        <p class="font-bold text-2xl text-gray-900" id="statPosts">-</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm p-5 flex items-center gap-4">
+                    <div class="w-12 h-12 bg-yellow-50 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-hourglass-half text-yellow-500 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-sm">Chờ duyệt</p>
+                        <p class="font-bold text-2xl text-yellow-600" id="statPending">-</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm p-5 flex items-center gap-4">
+                    <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-ban text-red-500 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-sm">Bị từ chối</p>
+                        <p class="font-bold text-2xl text-red-600" id="statRejected">-</p>
                     </div>
                 </div>
             </div>
 
             <!-- Users Table -->
-            <div class="bg-white rounded-2xl shadow-sm p-6">
-                <div class="flex items-center justify-between mb-5">
-                    <h2 class="text-base font-semibold text-gray-900">Danh sách người dùng</h2>
+            <div class="bg-white rounded-2xl shadow-sm p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="font-semibold text-gray-900"><i class="fas fa-users text-primary mr-2"></i>Danh sách người dùng</h2>
                     <button onclick="document.getElementById('addUserModal').classList.remove('hidden')"
-                        class="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white text-sm font-semibold px-4 py-2 rounded-full transition">
-                        <i class="fas fa-plus"></i> Thêm
+                        class="text-xs bg-primary hover:bg-primary-dark text-white font-semibold px-4 py-2 rounded-full transition">
+                        <i class="fas fa-plus mr-1"></i>Thêm user
                     </button>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead>
                             <tr class="border-b border-gray-100">
-                                <th
-                                    class="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-3 pr-4">
-                                    ID</th>
-                                <th
-                                    class="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-3 pr-4">
-                                    Tên</th>
-                                <th
-                                    class="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-3 pr-4">
-                                    Tên đăng nhập</th>
-                                <th
-                                    class="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-3 pr-4">
-                                    Vai trò</th>
-                                <th class="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-3">
-                                    Thao tác</th>
+                                <th class="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">ID</th>
+                                <th class="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">Tên</th>
+                                <th class="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">Username</th>
+                                <th class="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">Vai trò</th>
+                                <th class="text-left text-xs font-semibold text-gray-400 pb-3">Hành động</th>
                             </tr>
                         </thead>
                         <tbody id="usersTableBody">
-                            <tr>
-                                <td colspan="5" class="text-center text-gray-400 py-8">Đang tải...</td>
-                            </tr>
+                            <tr><td colspan="5" class="text-center text-gray-400 py-4">Đang tải...</td></tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- POSTS TABLE WITH MODERATION TABS -->
+            <div class="bg-white rounded-2xl shadow-sm p-5 mt-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="font-semibold text-gray-900"><i class="fas fa-file-alt text-primary mr-2"></i>Quản lý Bài viết</h2>
+                    <div class="flex items-center gap-2" id="bulkActions" style="display:none">
+                        <button onclick="approveAllPending()"
+                            class="text-xs bg-green-500 hover:bg-green-600 text-white font-semibold px-4 py-2 rounded-full transition">
+                            <i class="fas fa-check-double mr-1"></i>Duyệt tất cả
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex border-b border-gray-100 mb-4 gap-1">
+                    <button class="tab-btn active px-4 py-2.5 text-sm text-gray-500" onclick="switchTab('all', this)">
+                        Tất cả <span class="ml-1 text-xs bg-gray-100 px-2 py-0.5 rounded-full" id="tabAllCount">0</span>
+                    </button>
+                    <button class="tab-btn px-4 py-2.5 text-sm text-gray-500" onclick="switchTab('pending', this)">
+                        <i class="fas fa-hourglass-half text-yellow-500 mr-1"></i>Chờ duyệt
+                        <span class="ml-1 text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full" id="tabPendingCount">0</span>
+                    </button>
+                    <button class="tab-btn px-4 py-2.5 text-sm text-gray-500" onclick="switchTab('rejected', this)">
+                        <i class="fas fa-ban text-red-500 mr-1"></i>Bị từ chối
+                        <span class="ml-1 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full" id="tabRejectedCount">0</span>
+                    </button>
+                    <button class="tab-btn px-4 py-2.5 text-sm text-gray-500" onclick="switchTab('approved', this)">
+                        <i class="fas fa-check-circle text-green-500 mr-1"></i>Đã duyệt
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-100">
+                                <th class="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">ID</th>
+                                <th class="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">Tác giả</th>
+                                <th class="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">Nội dung</th>
+                                <th class="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">Trạng thái</th>
+                                <th class="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">AI Label</th>
+                                <th class="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">Thời gian</th>
+                                <th class="text-left text-xs font-semibold text-gray-400 pb-3">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="postsTableBody">
+                            <tr><td colspan="7" class="text-center text-gray-400 py-4">Đang tải...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ANNOUNCEMENTS MANAGEMENT -->
+            <div class="bg-white rounded-2xl shadow-sm p-5 mt-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="font-semibold text-gray-900"><i class="fas fa-bullhorn text-primary mr-2"></i>Quản lý Thông báo</h2>
+                    <button onclick="document.getElementById('addAnnouncementModal').classList.remove('hidden')"
+                        class="text-xs bg-primary hover:bg-primary-dark text-white font-semibold px-4 py-2 rounded-full transition">
+                        <i class="fas fa-plus mr-1"></i>Tạo thông báo
+                    </button>
+                </div>
+                <div class="space-y-3" id="announcementsList">
+                    <p class="text-sm text-gray-400 text-center py-4">Đang tải...</p>
                 </div>
             </div>
         </div>
     </main>
 
     <!-- Add User Modal -->
-    <div id="addUserModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <h3 class="font-bold text-gray-900">Thêm người dùng mới</h3>
-                <button onclick="document.getElementById('addUserModal').classList.add('hidden')"
-                    class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times"></i>
-                </button>
+    <div id="addUserModal"
+        class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <h3 class="font-bold text-gray-900 text-lg mb-4">Thêm người dùng mới</h3>
+            <div class="space-y-3">
+                <input type="text" id="newUsername" placeholder="Username"
+                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary">
+                <input type="text" id="newFullName" placeholder="Họ và tên"
+                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary">
+                <input type="password" id="newPassword" placeholder="Mật khẩu"
+                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary">
             </div>
-            <div class="px-6 py-5 space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Tên đăng
-                        nhập</label>
-                    <input type="text" id="newUsername"
-                        class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition"
-                        placeholder="username">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Họ và
-                        tên</label>
-                    <input type="text" id="newFullName"
-                        class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition"
-                        placeholder="Họ và tên">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Mật
-                        khẩu</label>
-                    <input type="password" id="newPassword"
-                        class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition"
-                        placeholder="Mật khẩu">
-                </div>
-            </div>
-            <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
-                <button onclick="document.getElementById('addUserModal').classList.add('hidden')"
-                    class="border border-gray-200 rounded-full px-5 py-2 text-sm font-medium hover:bg-gray-50 transition">Hủy</button>
+            <div class="flex gap-3 mt-5">
                 <button onclick="createUser()"
-                    class="bg-primary hover:bg-primary-dark text-white rounded-full px-5 py-2 text-sm font-semibold transition">Tạo</button>
+                    class="flex-1 bg-primary hover:bg-primary-dark text-white font-semibold py-2.5 rounded-xl text-sm transition">Tạo</button>
+                <button onclick="document.getElementById('addUserModal').classList.add('hidden')"
+                    class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl text-sm transition">Hủy</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Add Announcement Modal -->
+    <div id="addAnnouncementModal"
+        class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <h3 class="font-bold text-gray-900 text-lg mb-4"><i class="fas fa-bullhorn text-primary mr-2"></i>Tạo thông báo</h3>
+            <div class="space-y-3">
+                <input type="text" id="annTitle" placeholder="Tiêu đề thông báo"
+                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary">
+                <textarea id="annContent" rows="3" placeholder="Nội dung chi tiết..."
+                    class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary resize-none"></textarea>
+            </div>
+            <div class="flex gap-3 mt-5">
+                <button onclick="createAnnouncement()"
+                    class="flex-1 bg-primary hover:bg-primary-dark text-white font-semibold py-2.5 rounded-xl text-sm transition">Đăng</button>
+                <button onclick="document.getElementById('addAnnouncementModal').classList.add('hidden')"
+                    class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl text-sm transition">Hủy</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-20 right-5 z-50 hidden">
+        <div class="bg-white rounded-xl shadow-lg border px-5 py-3 flex items-center gap-3 min-w-[300px]">
+            <i id="toastIcon" class="fas fa-check-circle text-green-500 text-lg"></i>
+            <span id="toastMessage" class="text-sm text-gray-700 font-medium"></span>
         </div>
     </div>
 
     <script src="js/auth.js"></script>
     <script src="js/admin.js"></script>
-    <script>
-        function toggleUserMenu() { document.getElementById('userMenu').classList.toggle('hidden'); }
-        document.addEventListener('click', function (e) {
-            if (!document.getElementById('navAvatarWrap').contains(e.target)) document.getElementById('userMenu').classList.add('hidden');
-        });
-    </script>
 </body>
 
 </html>

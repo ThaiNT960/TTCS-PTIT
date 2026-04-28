@@ -22,6 +22,9 @@ public class PostLike {
 
     private LocalDateTime createdAt;
 
+    @Column(name = "reaction_type")
+    private String reactionType; // e.g. LIKE, HAHA, SAD, ANGRY
+
     // Getters and Setters
     public Long getId() {
         return id;
@@ -53,5 +56,13 @@ public class PostLike {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getReactionType() {
+        return reactionType;
+    }
+
+    public void setReactionType(String reactionType) {
+        this.reactionType = reactionType;
     }
 }

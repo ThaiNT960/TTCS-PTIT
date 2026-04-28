@@ -18,10 +18,19 @@ public class User {
 
     @JsonIgnore
     @Column(nullable = false)
-    private String password; // Lưu plain text theo yêu cầu
+    private String password;
 
     private String fullName;
     private String avatar;
+    private String coverPhoto;
+    private String bio;
+    private String workplace;
+    private String education;
+    private String location;
+
+    @Enumerated(EnumType.STRING)
+    private com.example.ptitsocialchat.enums.PrivacySetting privacySetting = com.example.ptitsocialchat.enums.PrivacySetting.PUBLIC;
+
     private String role; // ROLE_USER, ROLE_ADMIN
 
     // Getters and Setters
@@ -71,5 +80,53 @@ public class User {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getCoverPhoto() {
+        return coverPhoto;
+    }
+
+    public void setCoverPhoto(String coverPhoto) {
+        this.coverPhoto = coverPhoto;
+    }
+
+    public String getBio() {
+        return bio;
+    }
+
+    public void setBio(String bio) {
+        this.bio = bio;
+    }
+
+    public String getWorkplace() {
+        return workplace;
+    }
+
+    public void setWorkplace(String workplace) {
+        this.workplace = workplace;
+    }
+
+    public String getEducation() {
+        return education;
+    }
+
+    public void setEducation(String education) {
+        this.education = education;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public com.example.ptitsocialchat.enums.PrivacySetting getPrivacySetting() {
+        return privacySetting;
+    }
+
+    public void setPrivacySetting(com.example.ptitsocialchat.enums.PrivacySetting privacySetting) {
+        this.privacySetting = privacySetting;
     }
 }

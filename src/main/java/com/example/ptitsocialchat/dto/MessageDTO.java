@@ -8,6 +8,10 @@ public class MessageDTO {
     private LocalDateTime timestamp;
     private String senderUsername;
     private String receiverUsername;
+    private String imageUrl;
+    private Boolean isRevoked;
+    private String type; // Thêm type để phân loại event trong WebSocket (như REVOKE, UNFRIEND, NEW_MESSAGE)
+    private Long conversationId;
 
     // Getters and Setters
     public Long getId() {
@@ -48,5 +52,37 @@ public class MessageDTO {
 
     public void setReceiverUsername(String receiverUsername) {
         this.receiverUsername = receiverUsername;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public Boolean getIsRevoked() {
+        return isRevoked;
+    }
+
+    public void setIsRevoked(Boolean isRevoked) {
+        this.isRevoked = isRevoked;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public Long getConversationId() {
+        return conversationId;
+    }
+
+    public void setConversationId(Long conversationId) {
+        this.conversationId = conversationId;
     }
 }

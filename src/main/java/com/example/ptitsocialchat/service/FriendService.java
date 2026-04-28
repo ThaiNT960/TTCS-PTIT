@@ -7,9 +7,12 @@ import com.example.ptitsocialchat.repository.FriendRepository;
 import com.example.ptitsocialchat.repository.FriendRequestRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class FriendService {
@@ -17,6 +20,11 @@ public class FriendService {
     private FriendRepository friendRepository;
     @Autowired
     private FriendRequestRepository friendRequestRepository;
+    @Autowired
+    private NotificationService notificationService;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     public FriendRequest sendRequest(User sender, User receiver) {
         FriendRequest request = new FriendRequest();
@@ -24,13 +32,17 @@ public class FriendService {
         request.setReceiver(receiver);
         request.setStatus("PENDING");
         request.setCreatedAt(LocalDateTime.now());
-        return friendRequestRepository.save(request);
+        FriendRequest savedRequest = friendRequestRepository.save(request);
+        notificationService.createNotification(receiver, sender, com.example.ptitsocialchat.enums.NotificationType.FRIEND_REQUEST, "friend.html");
+        return savedRequest;
     }
 
     public void acceptRequest(Long requestId) {
         FriendRequest request = friendRequestRepository.findById(requestId).orElseThrow();
         request.setStatus("ACCEPTED");
         friendRequestRepository.save(request);
+
+        notificationService.createNotification(request.getSender(), request.getReceiver(), com.example.ptitsocialchat.enums.NotificationType.FRIEND_ACCEPT, "profile.html?username=" + request.getReceiver().getUsername());
 
         Friend f1 = new Friend();
         f1.setUser(request.getSender());
@@ -59,5 +71,35 @@ public class FriendService {
         FriendRequest request = friendRequestRepository.findById(requestId).orElseThrow();
         request.setStatus("REJECTED");
         friendRequestRepository.save(request);
+    }
+
+    public void unfriend(User current, User target) {
+        friendRepository.findByUserAndFriend(current, target).ifPresent(friendRepository::delete);
+        friendRepository.findByUserAndFriend(target, current).ifPresent(friendRepository::delete);
+
+        // Notify target user
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "UNFRIENDED");
+        payload.put("partnerUsername", current.getUsername());
+        messagingTemplate.convertAndSend("/topic/messages/" + target.getUsername(), payload);
+
+        // Notify current user
+        Map<String, Object> payloadSelf = new HashMap<>();
+        payloadSelf.put("type", "UNFRIENDED_SELF");
+        payloadSelf.put("partnerUsername", target.getUsername());
+        messagingTemplate.convertAndSend("/topic/messages/" + current.getUsername(), payloadSelf);
+    }
+
+    public String getFriendshipStatus(User viewer, User target) {
+        if (friendRepository.findByUserAndFriend(viewer, target).isPresent()) {
+            return "FRIEND";
+        }
+        if (friendRequestRepository.findBySenderAndReceiverAndStatus(viewer, target, "PENDING").isPresent()) {
+            return "REQUEST_SENT";
+        }
+        if (friendRequestRepository.findBySenderAndReceiverAndStatus(target, viewer, "PENDING").isPresent()) {
+            return "REQUEST_RECEIVED";
+        }
+        return "NONE";
     }
 }

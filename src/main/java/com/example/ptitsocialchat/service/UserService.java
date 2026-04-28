@@ -27,4 +27,19 @@ public class UserService {
     public void deleteById(Long id) {
         userRepository.deleteById(id);
     }
+
+    public User updateProfile(String username, com.example.ptitsocialchat.dto.UpdateProfileRequest request) {
+        User user = userRepository.findByUsername(username).orElseThrow();
+        if (request.getFullName() != null) user.setFullName(request.getFullName());
+        if (request.getAvatar() != null) user.setAvatar(request.getAvatar());
+        if (request.getCoverPhoto() != null) user.setCoverPhoto(request.getCoverPhoto());
+        if (request.getBio() != null) user.setBio(request.getBio());
+        if (request.getWorkplace() != null) user.setWorkplace(request.getWorkplace());
+        if (request.getEducation() != null) user.setEducation(request.getEducation());
+        if (request.getLocation() != null) user.setLocation(request.getLocation());
+        if (request.getPrivacySetting() != null) {
+            user.setPrivacySetting(com.example.ptitsocialchat.enums.PrivacySetting.valueOf(request.getPrivacySetting()));
+        }
+        return userRepository.save(user);
+    }
 }
