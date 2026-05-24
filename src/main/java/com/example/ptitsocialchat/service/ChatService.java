@@ -34,6 +34,9 @@ public class ChatService {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private com.example.ptitsocialchat.repository.FriendRepository friendRepository;
+
     @org.springframework.transaction.annotation.Transactional
     public Conversation createGroupConversation(String name, List<String> usernames) {
         Conversation conv = new Conversation();
@@ -84,10 +87,33 @@ public class ChatService {
         return messageRepository.save(message);
     }
 
-    public List<MessageDTO> getGroupChatHistory(Conversation conversation) {
+    public List<MessageDTO> getGroupChatHistory(Conversation conversation, User user) {
+        java.time.LocalDateTime joinedAt = java.time.LocalDateTime.MIN;
+        List<ConversationMember> memberships = conversationMemberRepository.findByUser(user);
+        for (ConversationMember member : memberships) {
+            if (member.getConversation().getId().equals(conversation.getId())) {
+                joinedAt = member.getJoinedAt();
+                break;
+            }
+        }
+        
+        final java.time.LocalDateTime filterTime = joinedAt;
         return messageRepository.findByConversationOrderByTimestampAsc(conversation).stream()
+                .filter(m -> m.getTimestamp().isAfter(filterTime))
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void clearGroupChatHistory(User user, Conversation conversation) {
+        List<ConversationMember> memberships = conversationMemberRepository.findByUser(user);
+        for (ConversationMember member : memberships) {
+            if (member.getConversation().getId().equals(conversation.getId())) {
+                member.setJoinedAt(java.time.LocalDateTime.now());
+                conversationMemberRepository.save(member);
+                break;
+            }
+        }
     }
 
     public java.util.Optional<Conversation> getConversation(Long id) {
@@ -141,25 +167,109 @@ public class ChatService {
         message.setIsRevoked(true);
         messageRepository.save(message);
 
-        // Notify receiver via WebSocket
+        // Notify via WebSocket
         Map<String, Object> payload = new HashMap<>();
         payload.put("type", "MESSAGE_RECALLED");
-        payload.put("partnerUsername", currentUser.getUsername());
         payload.put("messageId", messageId);
+
+        if (message.getConversation() != null && message.getConversation().isGroupChat()) {
+            messagingTemplate.convertAndSend(
+                    "/topic/conversation/" + message.getConversation().getId(), 
+                    payload
+            );
+        } else {
+            payload.put("partnerUsername", currentUser.getUsername());
+            messagingTemplate.convertAndSend(
+                    "/topic/messages/" + message.getReceiver().getUsername(), 
+                    payload
+            );
+            
+            // Notify sender as well so their other tabs update
+            Map<String, Object> senderPayload = new HashMap<>();
+            senderPayload.put("type", "MESSAGE_RECALLED");
+            senderPayload.put("partnerUsername", message.getReceiver().getUsername());
+            senderPayload.put("messageId", messageId);
+            messagingTemplate.convertAndSend(
+                    "/topic/messages/" + currentUser.getUsername(), 
+                    senderPayload
+            );
+        }
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void leaveGroupConversation(User user, Conversation conversation) {
+        List<ConversationMember> memberships = conversationMemberRepository.findByConversation(conversation);
+        ConversationMember toRemove = null;
+        for (ConversationMember member : memberships) {
+            if (member.getUser().getId().equals(user.getId())) {
+                toRemove = member;
+                break;
+            }
+        }
+        if (toRemove != null) {
+            conversationMemberRepository.delete(toRemove);
+            memberships.remove(toRemove);
+        }
         
-        messagingTemplate.convertAndSend(
-                "/topic/messages/" + message.getReceiver().getUsername(), 
-                payload
-        );
+        // Nếu không còn thành viên nào, tự động xóa vĩnh viễn nhóm và các tin nhắn liên quan
+        if (memberships.isEmpty()) {
+            conversationRepository.delete(conversation);
+        } else {
+            // Lưu tin nhắn hệ thống thông báo người dùng rời nhóm
+            Message systemMsg = new Message();
+            systemMsg.setConversation(conversation);
+            systemMsg.setSender(user);
+            systemMsg.setContent(user.getFullName() + " đã rời khỏi nhóm.");
+            systemMsg.setTimestamp(LocalDateTime.now());
+            messageRepository.save(systemMsg);
+            
+            // Broadcast tin nhắn hệ thống tới WebSocket nhóm
+            MessageDTO dto = convertToDTO(systemMsg);
+            messagingTemplate.convertAndSend("/topic/conversation/" + conversation.getId(), dto);
+        }
+    }
+
+    public List<User> getGroupNonMembers(Conversation conversation, User currentUser) {
+        List<User> friends = friendRepository.findByUser(currentUser).stream()
+                .map(com.example.ptitsocialchat.entity.Friend::getFriend)
+                .collect(Collectors.toList());
         
-        // Notify sender as well so their other tabs update
-        Map<String, Object> senderPayload = new HashMap<>();
-        senderPayload.put("type", "MESSAGE_RECALLED");
-        senderPayload.put("partnerUsername", message.getReceiver().getUsername());
-        senderPayload.put("messageId", messageId);
-        messagingTemplate.convertAndSend(
-                "/topic/messages/" + currentUser.getUsername(), 
-                senderPayload
-        );
+        java.util.Set<Long> memberIds = conversationMemberRepository.findByConversation(conversation).stream()
+                .map(m -> m.getUser().getId())
+                .collect(Collectors.toSet());
+        
+        return friends.stream()
+                .filter(f -> !memberIds.contains(f.getId()))
+                .collect(Collectors.toList());
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void addMembersToGroupConversation(Conversation conversation, List<String> usernames, User adder) {
+        for (String username : usernames) {
+            User user = userService.findByUsername(username).orElseThrow();
+            
+            boolean alreadyMember = conversationMemberRepository.findByConversation(conversation).stream()
+                    .anyMatch(m -> m.getUser().getId().equals(user.getId()));
+            
+            if (!alreadyMember) {
+                ConversationMember member = new ConversationMember();
+                member.setConversation(conversation);
+                member.setUser(user);
+                member.setJoinedAt(LocalDateTime.now());
+                conversationMemberRepository.save(member);
+                
+                // Lưu tin nhắn thông báo thêm thành viên
+                Message systemMsg = new Message();
+                systemMsg.setConversation(conversation);
+                systemMsg.setSender(adder);
+                systemMsg.setContent(user.getFullName() + " đã được thêm vào nhóm.");
+                systemMsg.setTimestamp(LocalDateTime.now());
+                messageRepository.save(systemMsg);
+                
+                // Broadcast qua WebSocket
+                MessageDTO dto = convertToDTO(systemMsg);
+                messagingTemplate.convertAndSend("/topic/conversation/" + conversation.getId(), dto);
+            }
+        }
     }
 }

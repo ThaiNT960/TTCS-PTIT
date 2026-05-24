@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,34 +22,36 @@ public class PostController {
     private UserService userService;
 
     @GetMapping
-    public List<PostDTO> getAllPosts(@RequestParam(required = false) String username,
+    public List<PostDTO> getAllPosts(Principal principal,
             @RequestParam(required = false) String search) {
         User currentUser = null;
-        if (username != null && !username.isEmpty()) {
-            currentUser = userService.findByUsername(username).orElse(null);
+        if (principal != null) {
+            currentUser = userService.findByUsername(principal.getName()).orElse(null);
         }
         return postService.getAllPosts(currentUser, search);
     }
 
     @GetMapping("/user/{targetUsername}")
     public List<PostDTO> getPostsByUser(@PathVariable String targetUsername,
-            @RequestParam(required = false) String viewer) {
+            Principal principal) {
         User targetUser = userService.findByUsername(targetUsername).orElse(null);
         if (targetUser == null)
             return List.of();
         User viewerUser = null;
-        if (viewer != null && !viewer.isEmpty()) {
-            viewerUser = userService.findByUsername(viewer).orElse(null);
+        if (principal != null) {
+            viewerUser = userService.findByUsername(principal.getName()).orElse(null);
         }
         return postService.getPostsByUser(targetUser, viewerUser);
     }
 
     @PostMapping
-    public ResponseEntity<?> createPost(@RequestBody Map<String, String> request) {
-        String username = request.get("username");
+    public ResponseEntity<?> createPost(@RequestBody Map<String, String> request, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
         String content = request.get("content");
         String imageUrl = request.get("imageUrl");
-        User user = userService.findByUsername(username).orElseThrow();
+        User user = userService.findByUsername(principal.getName()).orElseThrow();
         PostService.CreatePostResult result = postService.createPost(content, imageUrl, user);
 
         Map<String, String> response = new HashMap<>();
@@ -61,32 +64,38 @@ public class PostController {
     }
 
     @PostMapping("/{postId}/comments")
-    public ResponseEntity<?> addComment(@PathVariable Long postId, @RequestBody Map<String, String> request) {
-        String username = request.get("username");
+    public ResponseEntity<?> addComment(@PathVariable Long postId, @RequestBody Map<String, String> request, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
         String content = request.get("content");
         String parentIdStr = request.get("parentId");
         Long parentId = (parentIdStr != null && !parentIdStr.isEmpty() && !parentIdStr.equals("null"))
                 ? Long.parseLong(parentIdStr)
                 : null;
-        User user = userService.findByUsername(username).orElseThrow();
+        User user = userService.findByUsername(principal.getName()).orElseThrow();
         postService.addComment(postId, content, user, parentId);
         return ResponseEntity.ok("Comment added");
     }
 
     @PostMapping("/comments/{commentId}/reaction")
-    public ResponseEntity<?> reactToComment(@PathVariable Long commentId, @RequestBody Map<String, String> request) {
-        String username = request.get("username");
+    public ResponseEntity<?> reactToComment(@PathVariable Long commentId, @RequestBody Map<String, String> request, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
         String reactionType = request.get("reactionType");
-        User user = userService.findByUsername(username).orElseThrow();
+        User user = userService.findByUsername(principal.getName()).orElseThrow();
         boolean success = postService.reactToComment(commentId, user, reactionType != null ? reactionType : "LIKE");
         return ResponseEntity.ok(Map.of("success", success, "liked", success));
     }
 
     @PostMapping("/{postId}/like")
-    public ResponseEntity<?> reactToPost(@PathVariable Long postId, @RequestBody Map<String, String> request) {
-        String username = request.get("username");
+    public ResponseEntity<?> reactToPost(@PathVariable Long postId, @RequestBody Map<String, String> request, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
         String reactionType = request.get("reactionType");
-        User user = userService.findByUsername(username).orElseThrow();
+        User user = userService.findByUsername(principal.getName()).orElseThrow();
         boolean success = postService.reactToPost(postId, user, reactionType != null ? reactionType : "LIKE");
 
         Map<String, Object> response = new HashMap<>();
@@ -101,8 +110,11 @@ public class PostController {
     }
 
     @DeleteMapping("/{postId}")
-    public ResponseEntity<?> deletePost(@PathVariable Long postId, @RequestParam String username) {
-        User user = userService.findByUsername(username).orElseThrow();
+    public ResponseEntity<?> deletePost(@PathVariable Long postId, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+        User user = userService.findByUsername(principal.getName()).orElseThrow();
         try {
             postService.deletePost(postId, user);
             return ResponseEntity.ok("Post deleted");

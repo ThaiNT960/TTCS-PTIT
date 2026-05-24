@@ -1,4 +1,4 @@
-var API_URL = 'http://localhost:8080/api';
+var API_URL = window.location.origin + '/api';
 
 document.addEventListener('DOMContentLoaded', () => {
     const user = checkAuth();
@@ -25,7 +25,7 @@ function setNavAvatar(user) {
 
 async function loadProfileDynamic(viewer, targetUsername) {
     try {
-        const res = await fetch(`${API_URL}/users/profile/${encodeURIComponent(targetUsername)}?viewer=${encodeURIComponent(viewer.username)}`);
+        const res = await fetch(`${API_URL}/users/profile/${encodeURIComponent(targetUsername)}`);
         if (!res.ok) { 
             document.querySelector('main').innerHTML = '<div class="max-w-4xl mx-auto mt-20 text-center text-gray-500">Người dùng không tồn tại hoặc đã bị xóa</div>';
             return; 
@@ -122,7 +122,7 @@ async function sendFriendRequest(targetUsername) {
         const res = await fetch(`${API_URL}/friends/request`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ senderUsername: user.username, receiverUsername: targetUsername })
+            body: JSON.stringify({ receiverUsername: targetUsername })
         });
         if (res.ok) {
             alert('Đã gửi lời mời kết bạn!');
@@ -193,7 +193,7 @@ async function reactToComment(commentId) {
         await fetch(`${API_URL}/posts/comments/${commentId}/reaction`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: user.username, reactionType: 'LIKE' })
+            body: JSON.stringify({ reactionType: 'LIKE' })
         });
         const urlParams = new URLSearchParams(window.location.search);
         let targetUsername = urlParams.get('username') || user.username;
@@ -217,7 +217,7 @@ function formatTime(dateStr) {
 
 async function loadPosts(viewer, targetUsername) {
     try {
-        const res = await fetch(`${API_URL}/posts/user/${encodeURIComponent(targetUsername)}?viewer=${encodeURIComponent(viewer.username)}`);
+        const res = await fetch(`${API_URL}/posts/user/${encodeURIComponent(targetUsername)}`);
         const userPosts = await res.json();
         const container = document.getElementById('profilePosts');
         if (!container) return;
@@ -330,7 +330,7 @@ async function reactToPost(postId, reactionType) {
         await fetch(`${API_URL}/posts/${postId}/like`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: user.username, reactionType })
+            body: JSON.stringify({ reactionType })
         });
         const urlParams = new URLSearchParams(window.location.search);
         let targetUsername = urlParams.get('username') || user.username;
@@ -350,7 +350,7 @@ async function submitComment(postId) {
         await fetch(`${API_URL}/posts/${postId}/comments`, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ username: user.username, content, parentCommentId: parentId }) 
+            body: JSON.stringify({ content, parentCommentId: parentId }) 
         });
         input.value = '';
         input.dataset.parentId = '';
@@ -364,7 +364,7 @@ async function submitComment(postId) {
 async function deletePost(postId) {
     if (!confirm('Xóa bài viết này?')) return;
     try {
-        await fetch(`${API_URL}/posts/${postId}?username=${encodeURIComponent(checkAuth().username)}`, { method: 'DELETE' });
+        await fetch(`${API_URL}/posts/${postId}`, { method: 'DELETE' });
         document.getElementById(`post-${postId}`).remove();
     } catch (e) { console.error(e); }
 }
@@ -433,7 +433,7 @@ async function saveProfile() {
             coverPhoto: newCv || document.getElementById('editCoverUrl').value || ''
         };
 
-        const res = await fetch(`${API_URL}/users/profile?username=${encodeURIComponent(user.username)}`, {
+        const res = await fetch(`${API_URL}/users/profile`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updateData)

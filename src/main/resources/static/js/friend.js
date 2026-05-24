@@ -1,4 +1,4 @@
-var API_URL = 'http://localhost:8080/api';
+var API_URL = window.location.origin + '/api';
 
 document.addEventListener('DOMContentLoaded', () => {
     const user = checkAuth();
@@ -22,7 +22,7 @@ function setNavAvatar(user) {
 async function loadFriends(user) {
     const container = document.getElementById('friendsList');
     try {
-        const res = await fetch(`${API_URL}/friends?username=${user.username}`);
+        const res = await fetch(`${API_URL}/friends`);
         const friends = await res.json();
         if (!friends.length) {
             container.innerHTML = `<p class="text-center text-gray-400 text-sm py-6">Bạn chưa có bạn bè nào</p>`;
@@ -52,7 +52,7 @@ async function loadFriends(user) {
 async function loadFriendRequests(user) {
     const container = document.getElementById('friendRequests');
     try {
-        const res = await fetch(`${API_URL}/friends/requests?username=${user.username}`);
+        const res = await fetch(`${API_URL}/friends/requests`);
         const requests = await res.json();
         if (!requests.length) {
             container.innerHTML = `<p class="text-center text-gray-400 text-sm py-6">Không có lời mời kết bạn nào</p>`;
@@ -94,8 +94,8 @@ async function unfriend(targetUsername, btn) {
     if(!confirm('Bạn có chắc chắn muốn hủy kết bạn?')) return;
     const user = checkAuth();
     try {
-        await fetch(`${API_URL}/friends/unfriend/${targetUsername}?username=${user.username}`, { method: 'DELETE' });
-        btn.closest('.flex').remove();
+        await fetch(`${API_URL}/friends/unfriend/${targetUsername}`, { method: 'DELETE' });
+        btn.parentElement.remove();
         if(document.getElementById('friendsList').children.length === 0) {
             document.getElementById('friendsList').innerHTML = `<p class="text-center text-gray-400 text-sm py-6">Bạn chưa có bạn bè nào</p>`;
         }
@@ -141,7 +141,7 @@ async function sendRequest(receiverUsername, btn) {
         await fetch(`${API_URL}/friends/request`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ senderUsername: user.username, receiverUsername })
+            body: JSON.stringify({ receiverUsername })
         });
         btn.textContent = 'Đã gửi';
         btn.disabled = true;

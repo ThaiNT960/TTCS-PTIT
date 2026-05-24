@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 
 @RestController
@@ -22,13 +23,16 @@ public class AnnouncementController {
 
     @PostMapping
     public ResponseEntity<?> createAnnouncement(
-            @RequestParam String username,
+            Principal principal,
             @RequestBody java.util.Map<String, String> request) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
         String title = request.get("title");
         String content = request.get("content");
         
         try {
-            announcementService.save(title, content, username);
+            announcementService.save(title, content, principal.getName());
             return ResponseEntity.ok(java.util.Map.of("status", "ok"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
@@ -36,9 +40,12 @@ public class AnnouncementController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteAnnouncement(@PathVariable Long id, @RequestParam String username) {
+    public ResponseEntity<?> deleteAnnouncement(@PathVariable Long id, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
         try {
-            announcementService.deleteById(id, username);
+            announcementService.deleteById(id, principal.getName());
             return ResponseEntity.ok(java.util.Map.of("status", "ok"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));

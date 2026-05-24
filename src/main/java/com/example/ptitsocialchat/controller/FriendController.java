@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -21,10 +22,12 @@ public class FriendController {
     private UserService userService;
 
     @PostMapping("/request")
-    public ResponseEntity<?> sendFriendRequest(@RequestBody Map<String, String> request) {
-        String senderUsername = request.get("senderUsername");
+    public ResponseEntity<?> sendFriendRequest(@RequestBody Map<String, String> request, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
         String receiverUsername = request.get("receiverUsername");
-        User sender = userService.findByUsername(senderUsername).orElseThrow();
+        User sender = userService.findByUsername(principal.getName()).orElseThrow();
         User receiver = userService.findByUsername(receiverUsername).orElseThrow();
         friendService.sendRequest(sender, receiver);
         return ResponseEntity.ok("Friend request sent");
@@ -43,14 +46,21 @@ public class FriendController {
     }
 
     @GetMapping
-    public List<User> getFriends(@RequestParam String username) {
-        User user = userService.findByUsername(username).orElseThrow();
+    public List<User> getFriends(Principal principal, @RequestParam(required = false) String username) {
+        if (principal == null) {
+            return List.of();
+        }
+        String targetUsername = (username != null && !username.isEmpty()) ? username : principal.getName();
+        User user = userService.findByUsername(targetUsername).orElseThrow();
         return friendService.getFriends(user);
     }
 
     @GetMapping("/requests")
-    public List<FriendRequestDTO> getPendingRequests(@RequestParam String username) {
-        User user = userService.findByUsername(username).orElseThrow();
+    public List<FriendRequestDTO> getPendingRequests(Principal principal) {
+        if (principal == null) {
+            return List.of();
+        }
+        User user = userService.findByUsername(principal.getName()).orElseThrow();
         return friendService.getPendingRequests(user).stream()
                 .map(req -> {
                     FriendRequestDTO dto = new FriendRequestDTO();
@@ -65,8 +75,11 @@ public class FriendController {
     }
 
     @DeleteMapping("/unfriend/{targetUsername}")
-    public ResponseEntity<?> unfriend(@PathVariable String targetUsername, @RequestParam String username) {
-        User current = userService.findByUsername(username).orElseThrow();
+    public ResponseEntity<?> unfriend(@PathVariable String targetUsername, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+        User current = userService.findByUsername(principal.getName()).orElseThrow();
         User target = userService.findByUsername(targetUsername).orElseThrow();
         friendService.unfriend(current, target);
         return ResponseEntity.ok(Map.of("status", "ok"));

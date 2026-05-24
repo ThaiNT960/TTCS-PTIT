@@ -1,4 +1,4 @@
-var API_URL = 'http://localhost:8080/api';
+var API_URL = window.location.origin + '/api';
 
 document.addEventListener('DOMContentLoaded', () => {
     const user = checkAuth();
@@ -156,7 +156,7 @@ async function setModerationMode(mode) {
     } catch(e) { console.error(e); showToast('Lỗi kết nối', 'error'); }
 }
 
-async function checkAiService() {
+async function checkAiService(triggerToast = false) {
     try {
         // Đúng endpoint backend: /api/admin/moderation/ai-status
         const res = await fetch(`${API_URL}/admin/moderation/ai-status`);
@@ -168,10 +168,16 @@ async function checkAiService() {
                 dot.className = 'ai-status-dot ai-online';
                 text.className = 'text-green-600 font-medium';
                 text.textContent = 'AI Service: Đang chạy';
+                if (triggerToast) {
+                    showToast('AI Service đang hoạt động!', 'success');
+                }
             } else {
                 dot.className = 'ai-status-dot ai-offline';
                 text.className = 'text-red-500 font-medium';
                 text.textContent = 'AI Service: Không khả dụng';
+                if (triggerToast) {
+                    showToast('AI Service không khả dụng! (' + (data.url || '') + ')', 'error');
+                }
             }
         }
     } catch(e) {
@@ -180,6 +186,9 @@ async function checkAiService() {
         var text = document.getElementById('aiStatusText');
         if(dot) dot.className = 'ai-status-dot ai-offline';
         if(text) { text.className = 'text-red-500 font-medium'; text.textContent = 'AI Service: Không kết nối được'; }
+        if (triggerToast) {
+            showToast('Lỗi kiểm tra AI Service', 'error');
+        }
     }
 }
 
@@ -301,9 +310,8 @@ async function approveAllPending() {
 async function deletePost(postId, btn) {
     if(!confirm('Xóa bài viết này?')) return;
     try {
-        const currentUser = checkAuth();
-        const res = await fetch(`${API_URL}/posts/${postId}?username=${encodeURIComponent(currentUser.username)}`, { method: 'DELETE' });
-        if(res.ok) {
+        const res = await fetch(`${API_URL}/posts/${postId}`, { method: 'DELETE' });
+        if (res.ok) {
             showToast('Đã xóa bài viết', 'success');
             loadDashboardStats();
             loadPosts();
@@ -345,8 +353,7 @@ async function createAnnouncement() {
     if(!title || !content) { alert('Vui lòng điền đủ Tiêu đề và Nội dung'); return; }
     
     try {
-        const user = checkAuth();
-        const res = await fetch(`${API_URL}/announcements?username=${encodeURIComponent(user.username)}`, {
+        const res = await fetch(`${API_URL}/announcements`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ title, content })
@@ -364,9 +371,8 @@ async function createAnnouncement() {
 async function deleteAnnouncement(annId) {
     if(!confirm('Xóa thông báo này?')) return;
     try {
-        const user = checkAuth();
-        const res = await fetch(`${API_URL}/announcements/${annId}?username=${encodeURIComponent(user.username)}`, { method: 'DELETE' });
-        if(res.ok) {
+        const res = await fetch(`${API_URL}/announcements/${annId}`, { method: 'DELETE' });
+        if (res.ok) {
             showToast('Đã xóa thông báo', 'success');
             loadAnnouncements();
         } else showToast('Lỗi xóa thông báo', 'error');

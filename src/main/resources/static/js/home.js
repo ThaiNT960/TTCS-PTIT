@@ -1,4 +1,4 @@
-var API_URL = 'http://localhost:8080/api';
+var API_URL = window.location.origin + '/api';
 
 document.addEventListener('DOMContentLoaded', () => {
     const user = checkAuth();
@@ -112,8 +112,8 @@ function clearSearch() {
 async function loadPosts(user, searchQuery = '') {
     currentUserObj = user;
     try {
-        let url = `${API_URL}/posts?username=${encodeURIComponent(user.username)}`;
-        if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
+        let url = `${API_URL}/posts`;
+        if (searchQuery) url += `?search=${encodeURIComponent(searchQuery)}`;
         
         const res = await fetch(url);
         const posts = await res.json();
@@ -229,7 +229,7 @@ async function reactToPost(postId, reactionType) {
         const res = await fetch(`${API_URL}/posts/${postId}/like`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: user.username, reactionType: reactionType })
+            body: JSON.stringify({ reactionType: reactionType })
         });
         const data = await res.json();
         if (data.success || data.liked !== undefined) {
@@ -273,7 +273,7 @@ async function deletePost(postId) {
     if (!confirm('Xóa bài viết này?')) return;
     const user = checkAuth();
     try {
-        await fetch(`${API_URL}/posts/${postId}?username=${encodeURIComponent(user.username)}`, { method: 'DELETE' });
+        await fetch(`${API_URL}/posts/${postId}`, { method: 'DELETE' });
         const el = document.getElementById(`post-${postId}`);
         if (el) el.remove();
     } catch (e) { console.error(e); }
@@ -289,7 +289,7 @@ async function submitComment(postId) {
         await fetch(`${API_URL}/posts/${postId}/comments`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: user.username, content, parentId })
+            body: JSON.stringify({ content, parentId })
         });
         input.value = '';
         delete input.dataset.parentId;
@@ -357,7 +357,7 @@ async function reactToComment(commentId) {
         await fetch(`${API_URL}/posts/comments/${commentId}/reaction`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: user.username })
+            body: JSON.stringify({})
         });
         loadPosts(user, document.getElementById('searchInput') ? document.getElementById('searchInput').value.trim() : '');
     } catch (e) { console.error(e); }
@@ -413,7 +413,7 @@ function setupPostForm(user) {
             const res = await fetch(`${API_URL}/posts`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content, imageUrl: imageUrl, username: user.username })
+                body: JSON.stringify({ content, imageUrl: imageUrl })
             });
             if (res.ok) {
                 const result = await res.json();

@@ -1,4 +1,4 @@
-if (typeof API_URL === 'undefined') var API_URL = 'http://localhost:8080/api';
+if (typeof API_URL === 'undefined') var API_URL = window.location.origin + '/api';
 
 // Login Form Handler
 const loginForm = document.getElementById('loginForm');
@@ -72,18 +72,20 @@ function checkAuth() {
     return JSON.parse(user);
 }
 
-// Logout
-function logout() {
+async function logout() {
+    try {
+        await fetch(`${API_URL}/auth/logout`, { method: 'POST' });
+    } catch (e) {
+        console.error('Logout error', e);
+    }
     localStorage.clear();
     sessionStorage.clear();
     window.location.href = 'login.html';
 }
 
-// --- NOTIFICATIONS SYSTEM ---
 async function fetchNotifications() {
-    const user = checkAuth();
     try {
-        const res = await fetch(`${API_URL}/notifications?username=${encodeURIComponent(user.username)}`);
+        const res = await fetch(`${API_URL}/notifications`);
         if(!res.ok) return;
         const notis = await res.json();
         
@@ -169,9 +171,8 @@ async function markNotiAsRead(id) {
 }
 
 async function markAllNotiAsRead() {
-    const user = checkAuth();
     try {
-        await fetch(`${API_URL}/notifications/read-all?username=${encodeURIComponent(user.username)}`, { method: 'PUT' });
+        await fetch(`${API_URL}/notifications/read-all`, { method: 'PUT' });
         fetchNotifications();
     } catch(e) { console.error(e); }
 }

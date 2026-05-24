@@ -26,9 +26,9 @@ CREATE TABLE users (
 
 -- Dữ liệu mẫu (Seed Data)
 INSERT INTO users (id, username, password, full_name, role, avatar) VALUES
-(1, 'vana', 'password123', 'Nguyễn Văn A', 'ROLE_USER', NULL),
-(2, 'thib', 'password123', 'Trần Thị B', 'ROLE_USER', NULL),
-(3, 'adminc', 'password123', 'Lê Văn C', 'ROLE_ADMIN', NULL);
+(1, 'vana', '$2a$10$ORNucSuHuZOl6Bdpn054gepjQCAv3bzhD5Yi/wMYJYKvwFiHi7312', 'Nguyễn Văn A', 'ROLE_USER', NULL),
+(2, 'thib', '$2a$10$ORNucSuHuZOl6Bdpn054gepjQCAv3bzhD5Yi/wMYJYKvwFiHi7312', 'Trần Thị B', 'ROLE_USER', NULL),
+(3, 'adminc', '$2a$10$ORNucSuHuZOl6Bdpn054gepjQCAv3bzhD5Yi/wMYJYKvwFiHi7312', 'Lê Văn C', 'ROLE_ADMIN', NULL);
 
 -- ==========================================
 -- 2. BẢNG POSTS (Bài đăng)
