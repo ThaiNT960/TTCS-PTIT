@@ -1,4 +1,4 @@
-if (typeof API_URL === 'undefined') var API_URL = 'http://localhost:8080/api';
+if (typeof API_URL === 'undefined') var API_URL = '/api';
 
 // Login Form Handler
 const loginForm = document.getElementById('loginForm');
@@ -73,17 +73,32 @@ function checkAuth() {
 }
 
 // Logout
-function logout() {
+async function logout() {
+    try {
+        await fetch(`${API_URL}/auth/logout`, { method: 'POST' });
+    } catch (e) {
+        console.error('Logout error', e);
+    }
     localStorage.clear();
     sessionStorage.clear();
     window.location.href = 'login.html';
 }
 
 // --- NOTIFICATIONS SYSTEM ---
+function escapeHtml(unsafe) {
+    if (!unsafe) return "";
+    return String(unsafe)
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+}
+
 async function fetchNotifications() {
     const user = checkAuth();
     try {
-        const res = await fetch(`${API_URL}/notifications?username=${encodeURIComponent(user.username)}`);
+        const res = await fetch(`${API_URL}/notifications`);
         if(!res.ok) return;
         const notis = await res.json();
         
@@ -114,15 +129,16 @@ async function fetchNotifications() {
                 'MENTION': '<i class="fas fa-at text-purple-500"></i>'
             };
             const icon = iconMap[n.type] || '<i class="fas fa-bell text-gray-400"></i>';
-            const initial = (n.senderFullName || n.senderUsername || '?').charAt(0).toUpperCase();
-            const avatarHtml = n.senderAvatar ? `<img src="${n.senderAvatar}" class="w-full h-full object-cover">` : `<div class="w-full h-full bg-primary flex items-center justify-center text-white font-bold">${initial}</div>`;
+            const safeSenderName = escapeHtml(n.senderFullName || n.senderUsername || '?');
+            const initial = safeSenderName.charAt(0).toUpperCase();
+            const avatarHtml = n.senderAvatar ? `<img src="${escapeHtml(n.senderAvatar)}" class="w-full h-full object-cover">` : `<div class="w-full h-full bg-primary flex items-center justify-center text-white font-bold">${initial}</div>`;
             
             let message = '';
-            if(n.type === 'LIKE') message = `<b>${n.senderFullName}</b> đã thích bài viết của bạn.`;
-            else if(n.type === 'COMMENT') message = `<b>${n.senderFullName}</b> đã bình luận về bài viết của bạn.`;
-            else if(n.type === 'FRIEND_REQUEST') message = `<b>${n.senderFullName}</b> đã gửi cho bạn một lời mời kết bạn.`;
-            else if(n.type === 'FRIEND_ACCEPT') message = `<b>${n.senderFullName}</b> đã chấp nhận lời mời kết bạn của bạn.`;
-            else message = `<b>${n.senderFullName}</b> có tương tác với bạn.`;
+            if(n.type === 'LIKE') message = `<b>${safeSenderName}</b> đã thích bài viết của bạn.`;
+            else if(n.type === 'COMMENT') message = `<b>${safeSenderName}</b> đã bình luận về bài viết của bạn.`;
+            else if(n.type === 'FRIEND_REQUEST') message = `<b>${safeSenderName}</b> đã gửi cho bạn một lời mời kết bạn.`;
+            else if(n.type === 'FRIEND_ACCEPT') message = `<b>${safeSenderName}</b> đã chấp nhận lời mời kết bạn của bạn.`;
+            else message = `<b>${safeSenderName}</b> có tương tác với bạn.`;
 
             return `
                 <a href="${n.link || '#'}" onclick="markNotiAsRead(${n.id})" class="flex gap-3 p-3 border-b border-gray-100 hover:bg-gray-50 transition ${bgClass}">
@@ -171,7 +187,7 @@ async function markNotiAsRead(id) {
 async function markAllNotiAsRead() {
     const user = checkAuth();
     try {
-        await fetch(`${API_URL}/notifications/read-all?username=${encodeURIComponent(user.username)}`, { method: 'PUT' });
+        await fetch(`${API_URL}/notifications/read-all`, { method: 'PUT' });
         fetchNotifications();
     } catch(e) { console.error(e); }
 }

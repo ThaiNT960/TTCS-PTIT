@@ -32,10 +32,12 @@ public class NotificationService {
         return notificationRepository.findByRecipientOrderByCreatedAtDesc(user);
     }
 
-    public void markAsRead(Long notificationId) {
+    public void markAsRead(Long notificationId, User currentUser) {
         notificationRepository.findById(notificationId).ifPresent(n -> {
-            n.setRead(true);
-            notificationRepository.save(n);
+            if (n.getRecipient().getId().equals(currentUser.getId())) {
+                n.setRead(true);
+                notificationRepository.save(n);
+            }
         });
     }
 

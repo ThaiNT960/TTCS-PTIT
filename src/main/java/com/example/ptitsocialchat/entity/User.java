@@ -3,6 +3,7 @@ package com.example.ptitsocialchat.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -32,6 +33,18 @@ public class User {
     private com.example.ptitsocialchat.enums.PrivacySetting privacySetting = com.example.ptitsocialchat.enums.PrivacySetting.PUBLIC;
 
     private String role; // ROLE_USER, ROLE_ADMIN
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Post> posts;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Comment> comments;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PostLike> likes;
 
     // Getters and Setters
     public Long getId() {
@@ -129,4 +142,13 @@ public class User {
     public void setPrivacySetting(com.example.ptitsocialchat.enums.PrivacySetting privacySetting) {
         this.privacySetting = privacySetting;
     }
+
+    public List<Post> getPosts() { return posts; }
+    public void setPosts(List<Post> posts) { this.posts = posts; }
+
+    public List<Comment> getComments() { return comments; }
+    public void setComments(List<Comment> comments) { this.comments = comments; }
+
+    public List<PostLike> getLikes() { return likes; }
+    public void setLikes(List<PostLike> likes) { this.likes = likes; }
 }

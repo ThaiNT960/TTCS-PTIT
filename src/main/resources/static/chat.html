@@ -101,9 +101,14 @@
                                 ?</div>
                             <span id="chatTitle" class="font-semibold text-gray-900"></span>
                         </div>
-                        <button onclick="clearHistory()" class="text-gray-400 hover:text-red-500 transition p-2" title="Xóa lịch sử trò chuyện">
-                            <i class="fas fa-broom"></i>
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button id="groupMembersBtn" onclick="openGroupMembersModal()" class="hidden px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition">
+                                <i class="fas fa-users mr-1.5"></i> Thành viên
+                            </button>
+                            <button onclick="clearHistory()" class="text-gray-400 hover:text-red-500 transition p-2" title="Xóa lịch sử trò chuyện">
+                                <i class="fas fa-broom"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Messages -->
@@ -169,6 +174,19 @@
             <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
                 <button onclick="closeGroupModal()" class="px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-full transition">Hủy</button>
                 <button onclick="submitCreateGroup()" class="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-full text-sm font-bold transition shadow-md">Tạo nhóm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group Members Modal -->
+    <div id="groupMembersModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh]">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 class="font-bold text-lg text-gray-900">Thành viên nhóm (<span id="groupMembersCount">0</span>)</h3>
+                <button onclick="closeGroupMembersModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-4 space-y-3 overflow-y-auto flex-1 custom-scrollbar" id="groupMembersList">
+                <p class="text-center text-gray-400 text-sm py-4">Đang tải...</p>
             </div>
         </div>
     </div>

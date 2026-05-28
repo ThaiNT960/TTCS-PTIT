@@ -22,10 +22,14 @@
         /* Reaction Styles from PTIT */
         .reaction-container { position: relative; }
         .reaction-menu { 
-            position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); 
+            position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); 
             background: white; border-radius: 50px; padding: 4px 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); 
             display: flex; gap: 8px; opacity: 0; pointer-events: none; transition: 0.2s ease-in-out; 
-            margin-bottom: 8px; z-index: 10; border: 1px solid #f3f4f6;
+            z-index: 10; border: 1px solid #f3f4f6;
+        }
+        /* Bridge the gap so hover doesn't drop */
+        .reaction-menu::after {
+            content: ''; position: absolute; top: 100%; left: 0; width: 100%; height: 12px; background: transparent;
         }
         .reaction-container:hover .reaction-menu { opacity: 1; pointer-events: all; }
         .reaction-icon { font-size: 24px; cursor: pointer; transition: transform 0.2s; display: inline-block; }

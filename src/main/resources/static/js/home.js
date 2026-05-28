@@ -1,4 +1,4 @@
-var API_URL = 'http://localhost:8080/api';
+var API_URL = '/api';
 
 document.addEventListener('DOMContentLoaded', () => {
     const user = checkAuth();
@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set navbar avatar initial
     const navAvatar = document.getElementById('navAvatar');
     if (navAvatar && user.fullName) navAvatar.textContent = user.fullName.charAt(0).toUpperCase();
-    if (user.avatar) navAvatar.innerHTML = `<img src="${user.avatar}" class="w-full h-full object-cover" onerror="this.parentElement.textContent='${user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}'">`;
+    if (user.avatar) navAvatar.innerHTML = `<img src="${escapeHtml(user.avatar)}" class="w-full h-full object-cover" onerror="this.parentElement.textContent='${escapeHtml(user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U')}'">`;
 
     loadPosts(user);
     setupPostForm(user);
@@ -109,25 +109,49 @@ function clearSearch() {
     }
 }
 
-async function loadPosts(user, searchQuery = '') {
+let currentPage = 0;
+
+async function loadPosts(user, searchQuery = '', append = false) {
     currentUserObj = user;
     try {
-        let url = `${API_URL}/posts?username=${encodeURIComponent(user.username)}`;
+        if (!append) currentPage = 0;
+        let url = `${API_URL}/posts?page=${currentPage}&size=10`;
         if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
         
         const res = await fetch(url);
-        const posts = await res.json();
+        const data = await res.json();
+        const posts = data.content || [];
         const feed = document.getElementById('postsFeed');
-        feed.innerHTML = '';
-        allPostsData = posts || [];
+        
+        if (!append) {
+            feed.innerHTML = '';
+            allPostsData = posts || [];
+        } else {
+            allPostsData = allPostsData.concat(posts);
+        }
 
-        if (!posts.length) {
+        if (!allPostsData.length) {
             feed.innerHTML = `<div class="bg-white rounded-2xl shadow-sm p-8 text-center text-gray-400 text-sm">` + (searchQuery ? `Không tìm thấy bài viết nào phù hợp.` : `Chưa có bài viết nào. Hãy đăng bài đầu tiên!`) + `</div>`;
         } else {
             posts.forEach(post => renderPost(post, user, feed));
         }
+
+        const oldBtn = document.getElementById('loadMoreBtn');
+        if (oldBtn) oldBtn.remove();
+
+        if (data.totalPages && currentPage < data.totalPages - 1) {
+            const btn = document.createElement('button');
+            btn.id = 'loadMoreBtn';
+            btn.className = 'w-full py-3 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-xl text-sm font-semibold transition mt-2 mb-6';
+            btn.textContent = 'Xem thêm bài viết';
+            btn.onclick = () => {
+                currentPage++;
+                loadPosts(user, searchQuery, true);
+            };
+            feed.appendChild(btn);
+        }
         
-        extractTopics(allPostsData);
+        if (!append) extractTopics(allPostsData);
     } catch (e) {
         console.error(e);
     }
@@ -162,11 +186,11 @@ function renderPost(post, user, container) {
     div.innerHTML = `
         <div class="p-5">
             <div class="flex items-center gap-3 mb-3">
-                <a href="profile.html?username=${post.username}" class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden hover:opacity-80 transition no-underline">
-                    ${post.userAvatar ? `<img src="${post.userAvatar}" class="w-full h-full object-cover">` : initials}
+                <a href="profile.html?username=${escapeHtml(post.username)}" class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden hover:opacity-80 transition no-underline">
+                    ${post.userAvatar ? `<img src="${escapeHtml(post.userAvatar)}" class="w-full h-full object-cover">` : escapeHtml(initials)}
                 </a>
                 <div class="flex-1 min-w-0">
-                    <a href="profile.html?username=${post.username}" class="font-semibold text-gray-900 text-sm hover:underline">${post.userFullName || post.username}</a>
+                    <a href="profile.html?username=${escapeHtml(post.username)}" class="font-semibold text-gray-900 text-sm hover:underline">${escapeHtml(post.userFullName || post.username)}</a>
                     <p class="text-xs text-gray-400">${formatTime(post.createdAt)}</p>
                 </div>
                 ${(isOwner || isAdmin) ? `
@@ -175,7 +199,7 @@ function renderPost(post, user, container) {
                 </button>` : ''}
             </div>
             <p class="text-gray-800 text-sm leading-relaxed mb-3" style="white-space: pre-wrap;">${renderContent(post.content)}</p>
-            ${post.imageUrl ? `<img src="${post.imageUrl}" alt="Post image" class="w-full rounded-xl mb-3 max-h-96 object-cover" onerror="this.style.display='none'">` : ''}
+            ${post.imageUrl ? `<img src="${escapeHtml(post.imageUrl)}" alt="Post image" class="w-full rounded-xl mb-3 max-h-96 object-cover" onerror="this.style.display='none'">` : ''}
             <div class="flex items-center justify-between text-xs text-gray-400 mb-3 px-1 border-b border-gray-100 pb-3">
                 <div class="flex items-center gap-1 cursor-pointer hover:underline" onclick="showReactionList(${post.id})">
                     <span class="text-primary bg-primary bg-opacity-10 rounded-full w-5 h-5 flex items-center justify-center text-[10px]"><i class="fas fa-thumbs-up"></i></span>
@@ -258,12 +282,12 @@ async function showReactionList(postId) {
         };
         body.innerHTML = users.map(u => `
             <div class="flex items-center justify-between mb-3">
-                <a href="profile.html?username=${u.username}" class="flex items-center gap-3 no-underline hover:opacity-80">
+                <a href="profile.html?username=${escapeHtml(u.username)}" class="flex items-center gap-3 no-underline hover:opacity-80">
                     <div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold relative overflow-hidden">
-                        ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : (u.fullName||u.username).charAt(0).toUpperCase()}
+                        ${u.avatar ? `<img src="${escapeHtml(u.avatar)}" class="w-full h-full object-cover">` : escapeHtml((u.fullName||u.username).charAt(0).toUpperCase())}
                         <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 text-[10px]">${iconMap[u.reactionType] || iconMap['LIKE']}</div>
                     </div>
-                    <span class="font-semibold text-sm text-gray-900">${u.fullName || u.username}</span>
+                    <span class="font-semibold text-sm text-gray-900">${escapeHtml(u.fullName || u.username)}</span>
                 </a>
             </div>`).join('');
     } catch (e) { body.innerHTML = '<p class="text-center text-red-400 text-sm">Lỗi tải dữ liệu</p>'; }
@@ -273,7 +297,7 @@ async function deletePost(postId) {
     if (!confirm('Xóa bài viết này?')) return;
     const user = checkAuth();
     try {
-        await fetch(`${API_URL}/posts/${postId}?username=${encodeURIComponent(user.username)}`, { method: 'DELETE' });
+        await fetch(`${API_URL}/posts/${postId}`, { method: 'DELETE' });
         const el = document.getElementById(`post-${postId}`);
         if (el) el.remove();
     } catch (e) { console.error(e); }
@@ -319,17 +343,17 @@ window.renderCommentsHtml = function(postId, comments) {
         return `
             <div class="flex flex-col ${marginClass}">
                 <div class="flex gap-3">
-                    <a href="profile.html?username=${c.username}" class="${avatarSize} rounded-full bg-primary flex items-center justify-center text-white font-bold flex-shrink-0 overflow-hidden hover:opacity-80 transition no-underline">
-                         ${c.fullName ? c.fullName.charAt(0).toUpperCase() : 'U'}
+                    <a href="profile.html?username=${escapeHtml(c.username)}" class="${avatarSize} rounded-full bg-primary flex items-center justify-center text-white font-bold flex-shrink-0 overflow-hidden hover:opacity-80 transition no-underline">
+                         ${escapeHtml(c.fullName ? c.fullName.charAt(0).toUpperCase() : 'U')}
                     </a>
                     <div class="flex-1 min-w-0">
                         <div class="bg-${isReply ? 'gray-100' : 'white'} rounded-xl px-3 py-2 shadow-sm inline-block max-w-full">
-                            <a href="profile.html?username=${c.username}" class="font-semibold text-xs text-gray-700 mb-0.5 hover:underline">${c.fullName || c.username}</a>
-                            <p class="text-sm text-gray-800 break-words">${c.content}</p>
+                            <a href="profile.html?username=${escapeHtml(c.username)}" class="font-semibold text-xs text-gray-700 mb-0.5 hover:underline">${escapeHtml(c.fullName || c.username)}</a>
+                            <p class="text-sm text-gray-800 break-words">${renderContent(c.content)}</p>
                         </div>
                         <div class="text-[11px] text-gray-500 mt-1 ml-2 flex gap-3">
                             <button onclick="reactToComment(${c.id})" class="font-semibold hover:underline transition ${likeBtnClass}">Thích ${likeCountStr}</button>
-                            <button onclick="setReply(${postId}, ${c.id}, '${c.fullName || c.username}')" class="font-semibold hover:underline text-gray-500 transition">Trả lời</button>
+                            <button onclick="setReply(${postId}, ${c.id}, '${escapeHtml(c.fullName || c.username)}')" class="font-semibold hover:underline text-gray-500 transition">Trả lời</button>
                             <span>${formatTime(c.createdAt)}</span>
                         </div>
                     </div>

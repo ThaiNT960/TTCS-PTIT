@@ -5,6 +5,7 @@ import com.example.ptitsocialchat.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Map;
@@ -20,9 +21,13 @@ import com.example.ptitsocialchat.entity.Post;
 
 @RestController
 @RequestMapping("/api/admin")
+@org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @GetMapping("/users")
     public List<User> getAllUsers() {
@@ -32,11 +37,14 @@ public class AdminController {
     @DeleteMapping("/users/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable Long id) {
         userService.deleteById(id);
-        return ResponseEntity.ok("User deleted");
+        return ResponseEntity.ok(Map.of("message", "User deleted"));
     }
 
     @PostMapping("/users")
     public ResponseEntity<?> createUser(@RequestBody User user) {
+        if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        }
         userService.save(user);
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
@@ -121,6 +129,13 @@ public class AdminController {
         Post post = postRepository.findById(postId).orElseThrow();
         post.setStatus("APPROVED");
         postRepository.save(post);
+        return ResponseEntity.ok(Map.of("status", "ok"));
+    }
+
+    @DeleteMapping("/posts/{postId}")
+    public ResponseEntity<?> deletePostAdmin(@PathVariable Long postId) {
+        Post post = postRepository.findById(postId).orElseThrow();
+        postRepository.delete(post);
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
 

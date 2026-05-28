@@ -30,4 +30,7 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     List<User> findSendersByUser(User user);
 
     List<Message> findByConversationOrderByTimestampAsc(com.example.ptitsocialchat.entity.Conversation conversation);
+
+    @Query("SELECT m FROM Message m WHERE m.id IN (SELECT MAX(m2.id) FROM Message m2 WHERE m2.conversation IN :conversations GROUP BY m2.conversation.id)")
+    List<Message> findLastMessagesForConversations(@org.springframework.data.repository.query.Param("conversations") List<com.example.ptitsocialchat.entity.Conversation> conversations);
 }

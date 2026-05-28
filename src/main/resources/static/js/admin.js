@@ -1,4 +1,4 @@
-var API_URL = 'http://localhost:8080/api';
+var API_URL = '/api';
 
 document.addEventListener('DOMContentLoaded', () => {
     const user = checkAuth();
@@ -302,7 +302,7 @@ async function deletePost(postId, btn) {
     if(!confirm('Xóa bài viết này?')) return;
     try {
         const currentUser = checkAuth();
-        const res = await fetch(`${API_URL}/posts/${postId}?username=${encodeURIComponent(currentUser.username)}`, { method: 'DELETE' });
+        const res = await fetch(`${API_URL}/admin/posts/${postId}`, { method: 'DELETE' });
         if(res.ok) {
             showToast('Đã xóa bài viết', 'success');
             loadDashboardStats();
@@ -346,7 +346,7 @@ async function createAnnouncement() {
     
     try {
         const user = checkAuth();
-        const res = await fetch(`${API_URL}/announcements?username=${encodeURIComponent(user.username)}`, {
+        const res = await fetch(`${API_URL}/announcements`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ title, content })
@@ -365,7 +365,7 @@ async function deleteAnnouncement(annId) {
     if(!confirm('Xóa thông báo này?')) return;
     try {
         const user = checkAuth();
-        const res = await fetch(`${API_URL}/announcements/${annId}?username=${encodeURIComponent(user.username)}`, { method: 'DELETE' });
+        const res = await fetch(`${API_URL}/announcements/${annId}`, { method: 'DELETE' });
         if(res.ok) {
             showToast('Đã xóa thông báo', 'success');
             loadAnnouncements();

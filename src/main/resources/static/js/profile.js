@@ -1,4 +1,4 @@
-var API_URL = 'http://localhost:8080/api';
+var API_URL = '/api';
 
 document.addEventListener('DOMContentLoaded', () => {
     const user = checkAuth();
@@ -12,12 +12,29 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPosts(user, targetUsername);
 });
 
+function escapeHtml(unsafe) {
+    if (!unsafe) return "";
+    return String(unsafe)
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+}
+function renderContent(content) {
+    if (!content) return '';
+    var escaped = escapeHtml(content);
+    return escaped.replace(/(#[\w\u00C0-\u024F\u1E00-\u1EFF-]+)/g, function(match) {
+        return '<span class="hashtag-tag text-blue-600">' + match + '</span>';
+    });
+}
+
 function setNavAvatar(user) {
     const el = document.getElementById('navAvatar');
     if (!el) return;
-    const initial = (user.fullName || user.username || 'U').charAt(0).toUpperCase();
+    const initial = escapeHtml((user.fullName || user.username || 'U').charAt(0).toUpperCase());
     if (user.avatar) {
-        el.innerHTML = `<img src="${user.avatar}" class="w-full h-full object-cover rounded-full">`;
+        el.innerHTML = `<img src="${escapeHtml(user.avatar)}" class="w-full h-full object-cover rounded-full">`;
     } else {
         el.textContent = initial;
     }
@@ -72,8 +89,8 @@ async function loadProfileDynamic(viewer, targetUsername) {
 
         const addDetail = (icon, label, value) => {
             if (value) {
-                detailsHtml += `<div class="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100"><i class="${icon} text-primary/70"></i><span>${label}: <strong>${value}</strong></span></div>`;
-                sidebarHtml += `<div class="flex items-start gap-3 text-gray-600"><i class="${icon} mt-1 text-gray-400 w-4"></i><span>${label} tại <strong class="text-gray-900">${value}</strong></span></div>`;
+                detailsHtml += `<div class="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100"><i class="${icon} text-primary/70"></i><span>${label}: <strong>${escapeHtml(value)}</strong></span></div>`;
+                sidebarHtml += `<div class="flex items-start gap-3 text-gray-600"><i class="${icon} mt-1 text-gray-400 w-4"></i><span>${label} tại <strong class="text-gray-900">${escapeHtml(value)}</strong></span></div>`;
             }
         };
 
@@ -105,15 +122,28 @@ async function loadProfileDynamic(viewer, targetUsername) {
 function renderStrangerActions(container, targetData) {
     let btnHtml = '';
     if (targetData.friendshipStatus === 'NONE') {
-        btnHtml = `<button onclick="sendFriendRequest('${targetData.username}')" class="flex items-center gap-2 bg-primary text-white rounded-full px-6 py-2 text-sm font-bold hover:bg-primary-dark transition shadow-md"><i class="fas fa-user-plus"></i> Kết bạn</button>`;
+        btnHtml = `<button id="profileAddFriendBtn" data-username="${escapeHtml(targetData.username)}" class="flex items-center gap-2 bg-primary text-white rounded-full px-6 py-2 text-sm font-bold hover:bg-primary-dark transition shadow-md"><i class="fas fa-user-plus"></i> Kết bạn</button>`;
     } else if (targetData.friendshipStatus === 'REQUEST_SENT') {
         btnHtml = `<button class="flex items-center gap-2 bg-gray-100 text-gray-500 rounded-full px-5 py-2 text-sm font-bold opacity-80 cursor-not-allowed"><i class="fas fa-clock"></i> Đã gửi yêu cầu</button>`;
     } else if (targetData.friendshipStatus === 'REQUEST_RECEIVED') {
-        btnHtml = `<button onclick="window.location.href='friend.html'" class="flex items-center gap-2 bg-blue-600 text-white rounded-full px-5 py-2 text-sm font-bold hover:bg-blue-700 transition shadow-md">Phản hồi yêu cầu</button>`;
+        btnHtml = `<button id="profileRespFriendBtn" class="flex items-center gap-2 bg-blue-600 text-white rounded-full px-5 py-2 text-sm font-bold hover:bg-blue-700 transition shadow-md">Phản hồi yêu cầu</button>`;
     } else if (targetData.friendshipStatus === 'FRIEND') {
         btnHtml = `<button class="flex items-center gap-2 bg-gray-100 text-gray-700 rounded-full px-5 py-2 text-sm font-bold hover:bg-gray-200 transition"><i class="fas fa-user-check text-green-600"></i> Bạn bè</button>`;
     }
-    container.innerHTML = btnHtml + `<button onclick="window.location.href='chat.html?target=${targetData.username}'" class="flex items-center gap-2 border border-gray-200 rounded-full px-5 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition shadow-sm"><i class="fab fa-facebook-messenger"></i> Nhắn tin</button>`;
+    container.innerHTML = btnHtml + `<button id="profileChatBtn" data-username="${escapeHtml(targetData.username)}" data-fullname="${escapeHtml(targetData.fullName || targetData.username)}" class="flex items-center gap-2 border border-gray-200 rounded-full px-5 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition shadow-sm"><i class="fab fa-facebook-messenger"></i> Nhắn tin</button>`;
+
+    const addBtn = document.getElementById('profileAddFriendBtn');
+    if (addBtn) addBtn.addEventListener('click', () => sendFriendRequest(addBtn.dataset.username));
+
+    const respBtn = document.getElementById('profileRespFriendBtn');
+    if (respBtn) respBtn.addEventListener('click', () => window.location.href = 'friend.html');
+
+    const chatBtn = document.getElementById('profileChatBtn');
+    if (chatBtn) chatBtn.addEventListener('click', () => {
+        sessionStorage.setItem('currentChatUser', chatBtn.dataset.username);
+        sessionStorage.setItem('currentChatFullName', chatBtn.dataset.fullname);
+        window.location.href = 'chat.html';
+    });
 }
 
 async function sendFriendRequest(targetUsername) {
@@ -122,7 +152,7 @@ async function sendFriendRequest(targetUsername) {
         const res = await fetch(`${API_URL}/friends/request`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ senderUsername: user.username, receiverUsername: targetUsername })
+            body: JSON.stringify({ receiverUsername: targetUsername })
         });
         if (res.ok) {
             alert('Đã gửi lời mời kết bạn!');
@@ -155,17 +185,17 @@ window.renderCommentsHtml = function(postId, comments) {
         return `
             <div class="flex flex-col ${marginClass}">
                 <div class="flex gap-3">
-                    <a href="profile.html?username=${c.username}" class="${avatarSize} rounded-full bg-primary flex items-center justify-center text-white font-bold flex-shrink-0 overflow-hidden hover:opacity-80 transition">
-                         ${c.fullName ? c.fullName.charAt(0).toUpperCase() : 'U'}
+                    <a href="profile.html?username=${escapeHtml(c.username)}" class="${avatarSize} rounded-full bg-primary flex items-center justify-center text-white font-bold flex-shrink-0 overflow-hidden hover:opacity-80 transition">
+                         ${escapeHtml(c.fullName ? c.fullName.charAt(0).toUpperCase() : 'U')}
                     </a>
                     <div class="flex-1 min-w-0">
                         <div class="bg-${isReply ? 'gray-100' : 'white'} rounded-xl px-3 py-2 shadow-sm inline-block max-w-full">
-                            <p class="font-semibold text-xs text-gray-700 mb-0.5">${c.fullName || c.username}</p>
-                            <p class="text-sm text-gray-800 break-words">${c.content}</p>
+                            <p class="font-semibold text-xs text-gray-700 mb-0.5">${escapeHtml(c.fullName || c.username)}</p>
+                            <p class="text-sm text-gray-800 break-words">${renderContent(c.content)}</p>
                         </div>
                         <div class="text-[11px] text-gray-500 mt-1 ml-2 flex gap-3">
                             <button onclick="reactToComment(${c.id})" class="font-semibold hover:underline transition ${likeBtnClass}">Thích ${likeCountStr}</button>
-                            <button onclick="setReply(${postId}, ${c.id}, '${c.fullName || c.username}')" class="font-semibold hover:underline text-gray-500 transition">Trả lời</button>
+                            <button onclick="setReply(${postId}, ${c.id}, '${escapeHtml(c.fullName || c.username)}')" class="font-semibold hover:underline text-gray-500 transition">Trả lời</button>
                             <span>${formatTime(c.createdAt)}</span>
                         </div>
                     </div>
@@ -215,21 +245,28 @@ function formatTime(dateStr) {
     return d.toLocaleDateString('vi-VN');
 }
 
-async function loadPosts(viewer, targetUsername) {
+let currentPage = 0;
+
+async function loadPosts(viewer, targetUsername, append = false) {
     try {
-        const res = await fetch(`${API_URL}/posts/user/${encodeURIComponent(targetUsername)}?viewer=${encodeURIComponent(viewer.username)}`);
-        const userPosts = await res.json();
+        if (!append) currentPage = 0;
+        const res = await fetch(`${API_URL}/posts/user/${encodeURIComponent(targetUsername)}?viewer=${encodeURIComponent(viewer.username)}&page=${currentPage}&size=10`);
+        const data = await res.json();
+        const userPosts = data.content || [];
         const container = document.getElementById('profilePosts');
         if (!container) return;
         
-        container.innerHTML = '';
-        if (!userPosts.length) {
+        if (!append) {
+            container.innerHTML = '';
+        }
+
+        if (!append && !userPosts.length) {
             container.innerHTML = `<div class="bg-white rounded-2xl shadow-sm p-10 text-center"><p class="text-gray-400 text-sm">Chưa có bài viết nào</p></div>`;
             return;
         }
 
         userPosts.forEach(post => {
-            const initials = (post.fullName || post.username || '?').charAt(0).toUpperCase();
+            const initials = (post.userFullName || post.username || '?').charAt(0).toUpperCase();
             
             // Reaction Logic from PTIT
             const currentReaction = post.currentReaction;
@@ -256,14 +293,10 @@ async function loadPosts(viewer, targetUsername) {
             div.className = 'bg-white rounded-2xl shadow-sm mb-4 overflow-hidden fade-up';
             
             let mediaHtml = '';
-            if (post.mediaUrls && post.mediaUrls.length > 0) {
-                const count = post.mediaUrls.length;
-                const gridClass = count === 1 ? 'grid-cols-1' : 'grid-cols-2';
-                mediaHtml = `<div class="grid ${gridClass} gap-1 mb-3 rounded-xl overflow-hidden border border-gray-100">`;
-                post.mediaUrls.forEach(url => {
-                    const isVid = url.toLowerCase().endsWith('.mp4');
-                    mediaHtml += isVid ? `<video src="${url}" controls class="w-full aspect-square object-cover"></video>` : `<img src="${url}" class="w-full aspect-square object-cover">`;
-                });
+            if (post.imageUrl) {
+                mediaHtml = `<div class="mb-3 rounded-xl overflow-hidden border border-gray-100">`;
+                const isVid = post.imageUrl.toLowerCase().endsWith('.mp4');
+                mediaHtml += isVid ? `<video src="${post.imageUrl}" controls class="w-full object-cover"></video>` : `<img src="${post.imageUrl}" class="w-full object-cover">`;
                 mediaHtml += `</div>`;
             }
 
@@ -274,16 +307,16 @@ async function loadPosts(viewer, targetUsername) {
             div.innerHTML = `
                 <div class="p-5">
                     <div class="flex items-center gap-3 mb-3">
-                        <a href="profile.html?username=${post.username}" class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm overflow-hidden hover:opacity-80 transition no-underline">
-                            ${post.avatar ? `<img src="${post.avatar}" class="w-full h-full object-cover">` : initials}
+                        <a href="profile.html?username=${escapeHtml(post.username)}" class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm overflow-hidden hover:opacity-80 transition no-underline">
+                            ${post.userAvatar ? `<img src="${escapeHtml(post.userAvatar)}" class="w-full h-full object-cover">` : escapeHtml(initials)}
                         </a>
                         <div class="flex-1 min-w-0">
-                            <a href="profile.html?username=${post.username}" class="text-sm font-bold text-gray-900 hover:underline no-underline">${post.fullName}</a>
+                            <a href="profile.html?username=${escapeHtml(post.username)}" class="text-sm font-bold text-gray-900 hover:underline no-underline">${escapeHtml(post.userFullName || post.username)}</a>
                             <p class="text-[11px] text-gray-400 font-medium uppercase">${formatTime(post.createdAt)}</p>
                         </div>
                         ${isOwner ? `<button onclick="deletePost(${post.id})" class="text-gray-300 hover:text-red-500 transition text-sm px-2"><i class="fas fa-trash"></i></button>` : ''}
                     </div>
-                    <p class="text-gray-800 text-sm leading-relaxed mb-3">${post.content}</p>
+                    <p class="text-gray-800 text-sm leading-relaxed mb-3">${renderContent(post.content)}</p>
                     ${mediaHtml}
                     <div class="flex items-center justify-between text-xs text-gray-500 mb-3 px-1 border-b border-gray-100 pb-3">
                         <div class="flex items-center gap-1 cursor-pointer hover:underline" onclick="showReactionList(${post.id})">
@@ -316,6 +349,22 @@ async function loadPosts(viewer, targetUsername) {
                 </div>`;
             container.appendChild(div);
         });
+
+        const oldBtn = document.getElementById('loadMoreBtn');
+        if (oldBtn) oldBtn.remove();
+
+        if (data.totalPages && currentPage < data.totalPages - 1) {
+            const btn = document.createElement('button');
+            btn.id = 'loadMoreBtn';
+            btn.className = 'w-full py-3 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-xl text-sm font-semibold transition mt-2 mb-6';
+            btn.textContent = 'Xem thêm bài viết';
+            btn.onclick = () => {
+                currentPage++;
+                loadPosts(viewer, targetUsername, true);
+            };
+            container.appendChild(btn);
+        }
+
     } catch (e) { console.error(e); }
 }
 
@@ -350,7 +399,7 @@ async function submitComment(postId) {
         await fetch(`${API_URL}/posts/${postId}/comments`, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ username: user.username, content, parentCommentId: parentId }) 
+            body: JSON.stringify({ username: user.username, content, parentId: parentId }) 
         });
         input.value = '';
         input.dataset.parentId = '';
@@ -364,7 +413,7 @@ async function submitComment(postId) {
 async function deletePost(postId) {
     if (!confirm('Xóa bài viết này?')) return;
     try {
-        await fetch(`${API_URL}/posts/${postId}?username=${encodeURIComponent(checkAuth().username)}`, { method: 'DELETE' });
+        await fetch(`${API_URL}/posts/${postId}`, { method: 'DELETE' });
         document.getElementById(`post-${postId}`).remove();
     } catch (e) { console.error(e); }
 }
@@ -384,12 +433,12 @@ async function showReactionList(postId) {
         const iconMap = { 'LIKE': '<i class="fas fa-thumbs-up text-blue-500"></i>', 'HAHA': '<i class="fas fa-laugh-squint text-yellow-500"></i>', 'SAD': '<i class="fas fa-sad-tear text-yellow-500"></i>', 'ANGRY': '<i class="fas fa-angry text-red-500"></i>' };
         body.innerHTML = users.map(u => `
             <div class="flex items-center justify-between mb-3">
-                <a href="profile.html?username=${u.username}" class="flex items-center gap-3 no-underline hover:opacity-80">
+                <a href="profile.html?username=${escapeHtml(u.username)}" class="flex items-center gap-3 no-underline hover:opacity-80">
                     <div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold relative overflow-hidden">
-                        ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : (u.fullName||u.username).charAt(0).toUpperCase()}
+                        ${u.avatar ? `<img src="${escapeHtml(u.avatar)}" class="w-full h-full object-cover">` : escapeHtml((u.fullName||u.username).charAt(0).toUpperCase())}
                         <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 text-[10px]">${iconMap[u.reactionType] || iconMap['LIKE']}</div>
                     </div>
-                    <span class="font-semibold text-sm text-gray-900">${u.fullName || u.username}</span>
+                    <span class="font-semibold text-sm text-gray-900">${escapeHtml(u.fullName || u.username)}</span>
                 </a>
             </div>`).join('');
     } catch (e) { body.innerHTML = '<p class="text-center text-red-400 text-sm">Lỗi tải dữ liệu</p>'; }
@@ -433,7 +482,7 @@ async function saveProfile() {
             coverPhoto: newCv || document.getElementById('editCoverUrl').value || ''
         };
 
-        const res = await fetch(`${API_URL}/users/profile?username=${encodeURIComponent(user.username)}`, {
+        const res = await fetch(`${API_URL}/users/profile`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updateData)
@@ -479,7 +528,7 @@ window.switchTab = function(tabName) {
 
 async function loadProfileFriends(username) {
     try {
-        const res = await fetch(`${API_URL}/friends?username=${encodeURIComponent(username)}`);
+        const res = await fetch(`${API_URL}/friends`);
         const friends = await res.json();
         
         const countEl = document.getElementById('profileFriendCount');
@@ -497,12 +546,12 @@ async function loadProfileFriends(username) {
             const initial = (f.fullName || f.username || '?').charAt(0).toUpperCase();
             return `
                 <div class="flex items-center gap-3 p-4 border border-gray-100 rounded-xl bg-gray-50/50 hover:bg-gray-50 transition">
-                    <a href="profile.html?username=${f.username}" class="w-16 h-16 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-xl flex-shrink-0 overflow-hidden shadow-sm hover:opacity-90">
-                        ${f.avatar ? `<img src="${f.avatar}" class="w-full h-full object-cover">` : initial}
+                    <a href="profile.html?username=${escapeHtml(f.username)}" class="w-16 h-16 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-xl flex-shrink-0 overflow-hidden shadow-sm hover:opacity-90">
+                        ${f.avatar ? `<img src="${escapeHtml(f.avatar)}" class="w-full h-full object-cover">` : escapeHtml(initial)}
                     </a>
                     <div class="flex-1 min-w-0">
-                        <a href="profile.html?username=${f.username}" class="font-bold text-gray-900 hover:underline text-base truncate block">${f.fullName}</a>
-                        <p class="text-xs text-gray-500 mt-1">@${f.username}</p>
+                        <a href="profile.html?username=${escapeHtml(f.username)}" class="font-bold text-gray-900 hover:underline text-base truncate block">${escapeHtml(f.fullName)}</a>
+                        <p class="text-xs text-gray-500 mt-1">@${escapeHtml(f.username)}</p>
                     </div>
                 </div>
             `;

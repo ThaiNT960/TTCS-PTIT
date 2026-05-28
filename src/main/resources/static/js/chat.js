@@ -1,4 +1,4 @@
-var API_URL = 'http://localhost:8080/api';
+var API_URL = '/api';
 let stompClient = null;
 let currentChatUser = null;
 let currentConversationId = null;
@@ -44,9 +44,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function setNavAvatar(user) {
     const el = document.getElementById('navAvatar');
     if (!el) return;
-    const initial = (user.fullName || user.username || 'U').charAt(0).toUpperCase();
+    const initial = escapeHtml((user.fullName || user.username || 'U').charAt(0).toUpperCase());
     if (user.avatar) {
-        el.innerHTML = `<img src="${user.avatar}" class="w-full h-full object-cover rounded-full" onerror="this.parentElement.textContent='${initial}'">`;
+        el.innerHTML = `<img src="${escapeHtml(user.avatar)}" class="w-full h-full object-cover rounded-full" onerror="this.parentElement.textContent='${initial}'">`;
     } else {
         el.textContent = initial;
     }
@@ -58,7 +58,7 @@ function formatMessageTime(dateStr) {
 }
 
 function connectWebSocket() {
-    const socket = new SockJS('http://localhost:8080/ws');
+    const socket = new SockJS('/ws');
     stompClient = Stomp.over(socket);
     stompClient.debug = null;
     stompClient.connect({}, () => {
@@ -129,7 +129,7 @@ function connectWebSocket() {
 
 function showNotification(msg) {
     if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(`Tin nhắn từ ${msg.senderUsername}`, { body: msg.content });
+        new Notification(`Tin nhắn từ ${escapeHtml(msg.senderUsername)}`, { body: msg.content });
     }
 }
 
@@ -150,10 +150,10 @@ async function loadFriends() {
     const user = checkAuth();
     const list = document.getElementById('friendsList');
     try {
-        const res = await fetch(`${API_URL}/chat/contacts?username=${user.username}`);
+        const res = await fetch(`${API_URL}/chat/contacts`);
         const friends = await res.json();
         
-        const groupRes = await fetch(`${API_URL}/chat/groups?username=${user.username}`);
+        const groupRes = await fetch(`${API_URL}/chat/groups`);
         let groups = [];
         if (groupRes.ok) groups = await groupRes.json();
 
@@ -166,7 +166,7 @@ async function loadFriends() {
 
         groups.forEach(group => {
             subscribeToGroup(group.id);
-            const initial = (group.name || '?').charAt(0).toUpperCase();
+            const initial = escapeHtml((group.name || '?').charAt(0).toUpperCase());
             const div = document.createElement('div');
             div.className = 'chat-contact-item flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-50 transition';
             div.dataset.groupId = group.id;
@@ -174,7 +174,7 @@ async function loadFriends() {
             div.innerHTML = `
                 <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm flex-shrink-0">${initial}</div>
                 <div class="flex-1 min-w-0">
-                    <p class="font-semibold text-sm text-gray-900 truncate">${group.name}</p>
+                    <p class="font-semibold text-sm text-gray-900 truncate">${escapeHtml(group.name)}</p>
                     <p class="text-xs text-gray-400 truncate">Nhóm trò chuyện</p>
                 </div>
             `;
@@ -182,7 +182,7 @@ async function loadFriends() {
         });
 
         friends.forEach(friend => {
-            const initial = (friend.fullName || friend.username || '?').charAt(0).toUpperCase();
+            const initial = escapeHtml((friend.fullName || friend.username || '?').charAt(0).toUpperCase());
             const div = document.createElement('div');
             div.className = 'chat-contact-item flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-50 transition';
             div.dataset.username = friend.username;
@@ -190,8 +190,8 @@ async function loadFriends() {
             div.innerHTML = `
                 <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm flex-shrink-0">${initial}</div>
                 <div class="flex-1 min-w-0">
-                    <p class="font-semibold text-sm text-gray-900 truncate">${friend.fullName}</p>
-                    <p class="text-xs text-gray-400 truncate">@${friend.username}</p>
+                    <p class="font-semibold text-sm text-gray-900 truncate">${escapeHtml(friend.fullName)}</p>
+                    <p class="text-xs text-gray-400 truncate">@${escapeHtml(friend.username)}</p>
                 </div>
             `;
             list.appendChild(div);
@@ -236,16 +236,19 @@ async function selectChat(username, fullName) {
 
     // Update header
     document.getElementById('chatTitle').textContent = fullName;
+    document.getElementById('chatTitle').parentElement.setAttribute('href', `profile.html?username=${encodeURIComponent(username)}`);
     const partnerAv = document.getElementById('chatPartnerAvatar');
     if (partnerAv) {
         partnerAv.textContent = (fullName || username).charAt(0).toUpperCase();
         partnerAv.className = 'w-9 h-9 bg-primary rounded-full flex items-center justify-center text-white font-bold text-sm';
     }
+    const btn = document.getElementById('groupMembersBtn');
+    if (btn) btn.classList.add('hidden');
     document.getElementById('chatWindowHeader').classList.remove('hidden');
     // Fetch history and friend status
     const user = checkAuth();
     try {
-        const res = await fetch(`${API_URL}/chat/history?user1=${user.username}&user2=${username}`);
+        const res = await fetch(`${API_URL}/chat/history?targetUsername=${encodeURIComponent(username)}`);
         const data = await res.json();
         const history = data.messages || [];
 
@@ -296,9 +299,11 @@ async function selectGroupChat(groupId, groupName) {
     document.getElementById('chatTitle').textContent = groupName;
     const partnerAv = document.getElementById('chatPartnerAvatar');
     if (partnerAv) {
-        partnerAv.textContent = (groupName || '?').charAt(0).toUpperCase();
+        partnerAv.textContent = escapeHtml((groupName || '?').charAt(0).toUpperCase());
         partnerAv.className = 'w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm';
     }
+    const btn = document.getElementById('groupMembersBtn');
+    if (btn) btn.classList.remove('hidden');
     document.getElementById('chatWindowHeader').classList.remove('hidden');
     document.getElementById('chatInputArea').classList.remove('hidden');
     if (document.getElementById('notFriendPlaceholder')) {
@@ -346,14 +351,14 @@ function appendMessage(message, type) {
     if (message.isRevoked) {
         contentHtml = `<div class="italic text-gray-500 text-xs py-1">Tin nhắn đã bị thu hồi</div>`;
     } else {
-        const img = message.imageUrl ? `<img src="${message.imageUrl}" class="rounded-lg mb-2 max-w-full" style="max-height: 200px; object-fit: cover;">` : '';
-        const txt = message.content ? `<div>${message.content}</div>` : '';
+        const img = message.imageUrl ? `<img src="${escapeHtml(message.imageUrl)}" class="rounded-lg mb-2 max-w-full" style="max-height: 200px; object-fit: cover;">` : '';
+        const txt = message.content ? `<div>${escapeHtml(message.content)}</div>` : '';
         contentHtml = img + txt;
     }
 
     let senderHtml = '';
     if (type === 'received' && currentConversationId && message.senderUsername) {
-        senderHtml = `<div class="text-[10px] text-gray-400 mb-0.5 ml-1">@${message.senderUsername}</div>`;
+        senderHtml = `<div class="text-[10px] text-gray-400 mb-0.5 ml-1">@${escapeHtml(message.senderUsername)}</div>`;
     }
 
     const recallBtn = (type === 'sent' && !message.isRevoked && !currentConversationId)
@@ -382,7 +387,7 @@ async function recallMessage(messageId) {
     if (!confirm("Bạn có chắc chắn muốn thu hồi tin nhắn này? Cả hai phía đều sẽ không thấy nội dung này nữa.")) return;
     const user = checkAuth();
     try {
-        await fetch(`${API_URL}/chat/revoke/${messageId}?username=${user.username}`, { method: 'PUT' });
+        await fetch(`${API_URL}/chat/revoke/${messageId}`, { method: 'PUT' });
         // WebSocket event MESSAGE_RECALLED will trigger UI update, no need to call selectChat() here
     } catch (e) { console.error("Recall error:", e); }
 }
@@ -392,7 +397,7 @@ async function clearHistory() {
     if (!confirm(`Bạn có chắc muốn xóa toàn bộ lịch sử trò chuyện với ${currentChatUser}? Lưu ý: Chỉ xóa phía bạn, đối phương vẫn thấy.`)) return;
     const user = checkAuth();
     try {
-        await fetch(`${API_URL}/chat/history/${currentChatUser}?username=${user.username}`, { method: 'DELETE' });
+        await fetch(`${API_URL}/chat/history/${currentChatUser}`, { method: 'DELETE' });
         document.getElementById('chatMessages').innerHTML = '';
         selectChat(currentChatUser, document.getElementById('chatTitle').textContent);
     } catch (e) { console.error("Clear history error:", e); }
@@ -454,19 +459,65 @@ function openCreateGroupModal() {
     loadFriendsForSelection();
 }
 
-function closeGroupModal() { document.getElementById("groupModal").classList.add("hidden"); }
+function closeGroupModal() {
+    document.getElementById('groupModal').classList.add('hidden');
+}
+
+async function openGroupMembersModal() {
+    if (!currentConversationId) return;
+    document.getElementById('groupMembersModal').classList.remove('hidden');
+    const list = document.getElementById('groupMembersList');
+    list.innerHTML = '<p class="text-center text-gray-400 text-sm py-4">Đang tải...</p>';
+    
+    try {
+        const res = await fetch(`${API_URL}/chat/group/${currentConversationId}/members`);
+        if (res.ok) {
+            const members = await res.json();
+            document.getElementById('groupMembersCount').textContent = members.length;
+            list.innerHTML = '';
+            members.forEach(member => {
+                const initial = escapeHtml((member.fullName || member.username || '?').charAt(0).toUpperCase());
+                const time = new Date(member.joinedAt).toLocaleDateString('vi-VN');
+                const avatar = member.avatar ? `<img src="${escapeHtml(member.avatar)}" class="w-10 h-10 rounded-full object-cover flex-shrink-0">` 
+                                             : `<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm flex-shrink-0">${initial}</div>`;
+                
+                list.innerHTML += `
+                    <div class="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-xl transition">
+                        ${avatar}
+                        <div class="flex-1 min-w-0">
+                            <a href="profile.html?username=${encodeURIComponent(member.username)}" class="font-semibold text-sm text-gray-900 hover:underline truncate block">
+                                ${escapeHtml(member.fullName)}
+                            </a>
+                            <p class="text-xs text-gray-500 truncate">@${escapeHtml(member.username)} · Đã tham gia: ${time}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            list.innerHTML = '<p class="text-center text-red-500 text-sm py-4">Lỗi khi tải danh sách thành viên</p>';
+        }
+    } catch (e) {
+        console.error(e);
+        list.innerHTML = '<p class="text-center text-red-500 text-sm py-4">Lỗi khi tải danh sách thành viên</p>';
+    }
+}
+
+function closeGroupMembersModal() {
+    document.getElementById('groupMembersModal').classList.add('hidden');
+}
+
 
 async function loadFriendsForSelection() {
     const user = checkAuth();
     const container = document.getElementById("friendsSelectionList");
     try {
-        const res = await fetch(`${API_URL}/chat/contacts?username=${user.username}`);
+        const res = await fetch(`${API_URL}/chat/contacts`);
         const friends = await res.json();
         container.innerHTML = friends.map(f => `
             <label class="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition">
-                <input type="checkbox" name="groupMember" value="${f.username}" class="w-4 h-4 rounded text-primary border-gray-300">
-                <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold">${(f.fullName||f.username).charAt(0).toUpperCase()}</div>
-                <span class="text-sm font-medium text-gray-700">${f.fullName}</span>
+                <input type="checkbox" name="groupMember" value="${escapeHtml(f.username)}" class="w-4 h-4 rounded text-primary border-gray-300">
+                <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold">${escapeHtml((f.fullName||f.username).charAt(0).toUpperCase())}</div>
+                <span class="text-sm font-medium text-gray-700">${escapeHtml(f.fullName)}</span>
             </label>
         `).join("");
     } catch(e) { console.error(e); }

@@ -54,24 +54,31 @@ public class ChatService {
 
     public List<Map<String, Object>> getUserGroupConversations(User user) {
         List<ConversationMember> memberships = conversationMemberRepository.findByUser(user);
-        return memberships.stream()
-                .filter(m -> m.getConversation().isGroupChat())
-                .map(m -> {
-                    Conversation conv = m.getConversation();
-                    Map<String, Object> map = new HashMap<>();
-                    map.put("id", conv.getId());
-                    map.put("isGroupChat", true);
-                    map.put("name", conv.getName());
-                    map.put("avatar", null);
-                    
-                    List<Message> msgs = messageRepository.findByConversationOrderByTimestampAsc(conv);
-                    if (!msgs.isEmpty()) {
-                        Message last = msgs.get(msgs.size() - 1);
-                        map.put("lastMessage", last.getContent());
-                        map.put("lastTimestamp", last.getTimestamp());
-                    }
-                    return map;
-                }).collect(Collectors.toList());
+        List<Conversation> convs = memberships.stream()
+                .map(ConversationMember::getConversation)
+                .filter(Conversation::isGroupChat)
+                .collect(Collectors.toList());
+
+        if (convs.isEmpty()) return new java.util.ArrayList<>();
+
+        List<Message> lastMessages = messageRepository.findLastMessagesForConversations(convs);
+        Map<Long, Message> lastMessageMap = lastMessages.stream()
+                .collect(Collectors.toMap(m -> m.getConversation().getId(), m -> m));
+
+        return convs.stream().map(conv -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", conv.getId());
+            map.put("isGroupChat", true);
+            map.put("name", conv.getName());
+            map.put("avatar", null);
+            
+            Message last = lastMessageMap.get(conv.getId());
+            if (last != null) {
+                map.put("lastMessage", last.getContent());
+                map.put("lastTimestamp", last.getTimestamp());
+            }
+            return map;
+        }).collect(Collectors.toList());
     }
 
     public Message saveGroupMessage(User sender, Conversation conversation, String content, String imageUrl) {

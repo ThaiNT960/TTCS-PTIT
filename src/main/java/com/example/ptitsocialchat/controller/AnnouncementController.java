@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.security.Principal;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/announcements")
@@ -21,9 +23,12 @@ public class AnnouncementController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createAnnouncement(
-            @RequestParam String username,
+            Principal principal,
             @RequestBody java.util.Map<String, String> request) {
+        if (principal == null) return ResponseEntity.status(401).build();
+        String username = principal.getName();
         String title = request.get("title");
         String content = request.get("content");
         
@@ -36,7 +41,10 @@ public class AnnouncementController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteAnnouncement(@PathVariable Long id, @RequestParam String username) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> deleteAnnouncement(@PathVariable Long id, Principal principal) {
+        if (principal == null) return ResponseEntity.status(401).build();
+        String username = principal.getName();
         try {
             announcementService.deleteById(id, username);
             return ResponseEntity.ok(java.util.Map.of("status", "ok"));

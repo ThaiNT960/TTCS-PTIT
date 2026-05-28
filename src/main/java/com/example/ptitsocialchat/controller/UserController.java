@@ -7,6 +7,7 @@ import com.example.ptitsocialchat.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.security.Principal;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,13 +21,16 @@ public class UserController {
     private FriendService friendService;
 
     @GetMapping("/profile/{targetUsername}")
-    public ResponseEntity<?> getUserProfile(@PathVariable String targetUsername, @RequestParam String viewer) {
+    public ResponseEntity<?> getUserProfile(@PathVariable String targetUsername, Principal principal) {
         User targetUser = userService.findByUsername(targetUsername).orElse(null);
         if (targetUser == null) {
             return ResponseEntity.notFound().build();
         }
         
-        User viewerUser = userService.findByUsername(viewer).orElse(null);
+        User viewerUser = null;
+        if (principal != null) {
+            viewerUser = userService.findByUsername(principal.getName()).orElse(null);
+        }
         String friendshipStatus = "NONE";
         if (viewerUser != null) {
             friendshipStatus = friendService.getFriendshipStatus(viewerUser, targetUser);
@@ -49,9 +53,10 @@ public class UserController {
     }
 
     @PutMapping("/profile")
-    public ResponseEntity<?> updateProfile(@RequestParam String username, @RequestBody UpdateProfileRequest request) {
+    public ResponseEntity<?> updateProfile(Principal principal, @RequestBody UpdateProfileRequest request) {
+        if (principal == null) return ResponseEntity.status(401).build();
         try {
-            User updatedUser = userService.updateProfile(username, request);
+            User updatedUser = userService.updateProfile(principal.getName(), request);
             
             Map<String, Object> response = new HashMap<>();
             response.put("id", updatedUser.getId());

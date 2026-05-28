@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.AccessDeniedException;
 
 @Service
 public class FriendService {
@@ -26,35 +28,78 @@ public class FriendService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
+    @Transactional
     public FriendRequest sendRequest(User sender, User receiver) {
-        FriendRequest request = new FriendRequest();
-        request.setSender(sender);
-        request.setReceiver(receiver);
-        request.setStatus("PENDING");
-        request.setCreatedAt(LocalDateTime.now());
+        if (sender.getId().equals(receiver.getId())) {
+            throw new IllegalArgumentException("Không thể gửi yêu cầu kết bạn cho chính mình");
+        }
+        if (friendRepository.findByUserAndFriend(sender, receiver).isPresent()
+                || friendRepository.findByUserAndFriend(receiver, sender).isPresent()) {
+            throw new IllegalArgumentException("Hai người đã là bạn bè");
+        }
+        if (friendRequestRepository.findBySenderAndReceiverAndStatus(sender, receiver, "PENDING").isPresent()) {
+            throw new IllegalArgumentException("Bạn đã gửi yêu cầu kết bạn cho người này rồi");
+        }
+        if (friendRequestRepository.findBySenderAndReceiverAndStatus(receiver, sender, "PENDING").isPresent()) {
+            throw new IllegalArgumentException("Người này đã gửi yêu cầu kết bạn cho bạn rồi");
+        }
+
+        java.util.Optional<FriendRequest> existingRequest = friendRequestRepository.findBySenderAndReceiverAndStatus(sender, receiver, "REJECTED");
+        if (existingRequest.isEmpty()) {
+            existingRequest = friendRequestRepository.findBySenderAndReceiverAndStatus(sender, receiver, "ACCEPTED");
+        }
+
+        FriendRequest request;
+        if (existingRequest.isPresent()) {
+            request = existingRequest.get();
+            request.setStatus("PENDING");
+            request.setCreatedAt(LocalDateTime.now());
+        } else {
+            request = new FriendRequest();
+            request.setSender(sender);
+            request.setReceiver(receiver);
+            request.setStatus("PENDING");
+            request.setCreatedAt(LocalDateTime.now());
+        }
+        
         FriendRequest savedRequest = friendRequestRepository.save(request);
         notificationService.createNotification(receiver, sender, com.example.ptitsocialchat.enums.NotificationType.FRIEND_REQUEST, "friend.html");
         return savedRequest;
     }
 
-    public void acceptRequest(Long requestId) {
+    @Transactional
+    public void acceptRequest(Long requestId, User currentUser) {
         FriendRequest request = friendRequestRepository.findById(requestId).orElseThrow();
+        if (!request.getReceiver().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("Bạn không có quyền thao tác trên lời mời này");
+        }
+        if (!"PENDING".equals(request.getStatus())) {
+            throw new IllegalArgumentException("Yêu cầu này không còn hiệu lực");
+        }
+
+        User sender = request.getSender();
+        User receiver = request.getReceiver();
+
+        if (friendRepository.findByUserAndFriend(sender, receiver).isEmpty()) {
+            Friend f1 = new Friend();
+            f1.setUser(sender);
+            f1.setFriend(receiver);
+            f1.setCreatedAt(LocalDateTime.now());
+            friendRepository.save(f1);
+        }
+
+        if (friendRepository.findByUserAndFriend(receiver, sender).isEmpty()) {
+            Friend f2 = new Friend();
+            f2.setUser(receiver);
+            f2.setFriend(sender);
+            f2.setCreatedAt(LocalDateTime.now());
+            friendRepository.save(f2);
+        }
+
         request.setStatus("ACCEPTED");
         friendRequestRepository.save(request);
 
-        notificationService.createNotification(request.getSender(), request.getReceiver(), com.example.ptitsocialchat.enums.NotificationType.FRIEND_ACCEPT, "profile.html?username=" + request.getReceiver().getUsername());
-
-        Friend f1 = new Friend();
-        f1.setUser(request.getSender());
-        f1.setFriend(request.getReceiver());
-        f1.setCreatedAt(LocalDateTime.now());
-        friendRepository.save(f1);
-
-        Friend f2 = new Friend();
-        f2.setUser(request.getReceiver());
-        f2.setFriend(request.getSender());
-        f2.setCreatedAt(LocalDateTime.now());
-        friendRepository.save(f2);
+        notificationService.createNotification(sender, receiver, com.example.ptitsocialchat.enums.NotificationType.FRIEND_ACCEPT, "profile.html?username=" + receiver.getUsername());
     }
 
     public List<User> getFriends(User user) {
@@ -67,12 +112,20 @@ public class FriendService {
         return friendRequestRepository.findByReceiverAndStatus(user, "PENDING");
     }
 
-    public void rejectRequest(Long requestId) {
+    @Transactional
+    public void rejectRequest(Long requestId, User currentUser) {
         FriendRequest request = friendRequestRepository.findById(requestId).orElseThrow();
+        if (!request.getReceiver().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("Bạn không có quyền thao tác trên lời mời này");
+        }
+        if (!"PENDING".equals(request.getStatus())) {
+            throw new IllegalArgumentException("Yêu cầu này không còn hiệu lực");
+        }
         request.setStatus("REJECTED");
         friendRequestRepository.save(request);
     }
 
+    @Transactional
     public void unfriend(User current, User target) {
         friendRepository.findByUserAndFriend(current, target).ifPresent(friendRepository::delete);
         friendRepository.findByUserAndFriend(target, current).ifPresent(friendRepository::delete);

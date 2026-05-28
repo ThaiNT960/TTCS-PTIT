@@ -9,8 +9,8 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
-
 import java.time.LocalDateTime;
+import java.security.Principal;
 
 @Controller
 public class ChatSocketController {
@@ -27,10 +27,16 @@ public class ChatSocketController {
     @Autowired
     private com.example.ptitsocialchat.repository.FriendRepository friendRepository;
 
+    @Autowired
+    private com.example.ptitsocialchat.repository.ConversationMemberRepository conversationMemberRepository;
+
     @MessageMapping("/chat")
-    public void processMessage(@Payload MessageDTO messageDTO) {
-        User sender = userService.findByUsername(messageDTO.getSenderUsername()).orElseThrow();
+    public void processMessage(@Payload MessageDTO messageDTO, Principal principal) {
+        if (principal == null) return;
+        String senderUsername = principal.getName();
+        User sender = userService.findByUsername(senderUsername).orElseThrow();
         User receiver = userService.findByUsername(messageDTO.getReceiverUsername()).orElseThrow();
+        messageDTO.setSenderUsername(senderUsername);
 
         if (friendRepository.findByUserAndFriend(sender, receiver).isEmpty()) {
             return; // Ignore message if not friends
@@ -54,9 +60,16 @@ public class ChatSocketController {
     }
 
     @MessageMapping("/chat/group")
-    public void processGroupMessage(@Payload MessageDTO messageDTO) {
-        User sender = userService.findByUsername(messageDTO.getSenderUsername()).orElseThrow();
+    public void processGroupMessage(@Payload MessageDTO messageDTO, Principal principal) {
+        if (principal == null) return;
+        String senderUsername = principal.getName();
+        User sender = userService.findByUsername(senderUsername).orElseThrow();
+        messageDTO.setSenderUsername(senderUsername);
         com.example.ptitsocialchat.entity.Conversation conv = chatService.getConversation(messageDTO.getConversationId()).orElseThrow();
+
+        if (conversationMemberRepository.findByConversationAndUser(conv, sender).isEmpty()) {
+            return; // Ignore message if sender is not in the group
+        }
 
         com.example.ptitsocialchat.entity.Message savedMsg = chatService.saveGroupMessage(sender, conv, messageDTO.getContent(), messageDTO.getImageUrl());
         

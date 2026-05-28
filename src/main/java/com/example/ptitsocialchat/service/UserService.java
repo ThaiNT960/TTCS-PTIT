@@ -24,6 +24,10 @@ public class UserService {
         return userRepository.findAll();
     }
 
+    public List<User> searchUsers(String keyword) {
+        return userRepository.searchUsers(keyword);
+    }
+
     public void deleteById(Long id) {
         userRepository.deleteById(id);
     }

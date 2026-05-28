@@ -8,7 +8,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "posts")
+@Table(name = "posts", indexes = {
+    @Index(name = "idx_post_user_id", columnList = "user_id"),
+    @Index(name = "idx_post_created_at", columnList = "createdAt"),
+    @Index(name = "idx_post_status", columnList = "status")
+})
 @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class Post {
     @Id
@@ -45,9 +49,6 @@ public class Post {
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostLike> likes;
 
-    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PostMedia> media;
-
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -75,6 +76,5 @@ public class Post {
     public void setComments(List<Comment> comments) { this.comments = comments; }
     public List<PostLike> getLikes() { return likes; }
     public void setLikes(List<PostLike> likes) { this.likes = likes; }
-    public List<PostMedia> getMedia() { return media; }
-    public void setMedia(List<PostMedia> media) { this.media = media; }
 }
+
