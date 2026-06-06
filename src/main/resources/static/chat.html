@@ -10,12 +10,12 @@
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: { primary: '#ae1a21', 'primary-dark': '#8a141a' }
+                    colors: { primary: '#e53935', 'primary-dark': '#a31010' }
                 }
             }
         }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
@@ -34,20 +34,26 @@
             </a>
             <div class="flex items-center gap-1">
                 <a href="home.html" class="nav-link"><i class="fas fa-home"></i> Trang chủ</a>
+                <a href="community.html" class="nav-link"><i class="fas fa-globe"></i> Cộng đồng</a>
                 <a href="friend.html" class="nav-link"><i class="fas fa-user-friends"></i> Bạn bè</a>
                 <a href="chat.html" class="nav-link active"><i class="fas fa-comment-dots"></i> Tin nhắn</a>
             </div>
             <div class="flex items-center gap-3 flex-shrink-0 relative">
                 <!-- Notifications -->
                 <div class="relative" id="notiWrap">
-                    <button onclick="toggleNotiMenu()" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-200 transition focus:outline-none relative">
+                    <button onclick="toggleNotiMenu()"
+                        class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-200 transition focus:outline-none relative">
                         <i class="fas fa-bell text-lg"></i>
-                        <span id="notiBadge" class="hidden absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white">0</span>
+                        <span id="notiBadge"
+                            class="hidden absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white">0</span>
                     </button>
-                    <div id="notiMenu" class="hidden absolute right-0 top-12 bg-white border border-gray-200 rounded-2xl shadow-xl w-80 overflow-hidden z-50">
+                    <div id="notiMenu"
+                        class="hidden absolute right-0 top-12 bg-white border border-gray-200 rounded-2xl shadow-xl w-80 overflow-hidden z-50">
                         <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                             <h3 class="font-bold text-gray-900">Thông báo</h3>
-                            <button onclick="markAllNotiAsRead()" class="text-xs text-primary font-semibold hover:underline">Đánh dấu tất cả là đã đọc</button>
+                            <button onclick="markAllNotiAsRead()"
+                                class="text-xs text-primary font-semibold hover:underline">Đánh dấu tất cả là đã
+                                đọc</button>
                         </div>
                         <div id="notiList" class="max-h-96 overflow-y-auto custom-scrollbar">
                             <p class="text-center text-gray-400 text-sm py-8">Đang tải thông báo...</p>
@@ -81,7 +87,8 @@
                 <div class="w-72 flex-shrink-0 border-r border-gray-100 flex flex-col">
                     <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                         <h2 class="text-lg font-bold text-gray-900">Tin nhắn</h2>
-                        <button onclick="openCreateGroupModal()" class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-600 transition shadow-sm">
+                        <button onclick="openCreateGroupModal()"
+                            class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-600 transition shadow-sm">
                             <i class="fas fa-plus"></i>
                         </button>
                     </div>
@@ -101,15 +108,18 @@
                                 ?</div>
                             <span id="chatTitle" class="font-semibold text-gray-900"></span>
                         </div>
-                        <div class="flex items-center gap-1">
-                            <button id="addMemberBtn" onclick="openAddMemberModal()" class="text-gray-400 hover:text-primary transition p-2 hidden" title="Thêm thành viên vào nhóm">
-                                <i class="fas fa-user-plus"></i>
+                        <div class="flex items-center gap-1.5">
+                            <button id="groupInfoBtn" onclick="toggleGroupSidebar()"
+                                class="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-primary hover:bg-gray-100 transition hidden" title="Thông tin nhóm">
+                                <i class="fas fa-info-circle text-lg"></i>
                             </button>
-                            <button id="clearHistoryBtn" onclick="clearHistory()" class="text-gray-400 hover:text-red-500 transition p-2" title="Xóa lịch sử trò chuyện">
-                                <i class="fas fa-broom"></i>
+                            <button id="clearHistoryBtn" onclick="clearHistory()"
+                                class="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-gray-100 transition" title="Xóa lịch sử trò chuyện">
+                                <i class="fas fa-broom text-lg"></i>
                             </button>
-                            <button id="leaveGroupBtn" onclick="leaveGroup()" class="text-gray-400 hover:text-red-500 transition p-2 hidden" title="Rời nhóm">
-                                <i class="fas fa-sign-out-alt"></i>
+                            <button id="leaveGroupBtn" onclick="leaveGroup()"
+                                class="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-gray-100 transition hidden" title="Rời nhóm">
+                                <i class="fas fa-sign-out-alt text-lg"></i>
                             </button>
                         </div>
                     </div>
@@ -123,7 +133,8 @@
                     </div>
 
                     <!-- Input -->
-                    <div id="notFriendPlaceholder" class="hidden px-4 py-6 border-t border-gray-100 bg-white flex-shrink-0 text-center text-sm text-gray-500">
+                    <div id="notFriendPlaceholder"
+                        class="hidden px-4 py-6 border-t border-gray-100 bg-white flex-shrink-0 text-center text-sm text-gray-500">
                         Bạn không thể nhắn tin do không còn là bạn bè.
                     </div>
                     <div id="chatInputArea" class="hidden px-4 py-3 border-t border-gray-100 bg-white flex-shrink-0">
@@ -137,7 +148,8 @@
                         </div>
                         <form id="messageForm" class="flex items-center gap-3">
                             <input type="file" id="chatImageInput" accept="image/*" class="hidden">
-                            <button type="button" id="chatAttachBtn" onclick="document.getElementById('chatImageInput').click()"
+                            <button type="button" id="chatAttachBtn"
+                                onclick="document.getElementById('chatImageInput').click()"
                                 class="text-gray-400 hover:text-primary transition p-2 focus:outline-none">
                                 <i class="fas fa-paperclip text-lg"></i>
                             </button>
@@ -151,42 +163,268 @@
                         </form>
                     </div>
                 </div>
+
+                <!-- RIGHT SIDEBAR (Group Info) -->
+                <div id="groupInfoSidebar"
+                    class="w-80 flex-shrink-0 border-l border-gray-100 flex flex-col hidden bg-gray-50/50">
+                    <div
+                        class="px-5 py-3.5 border-b border-gray-100 bg-white flex items-center justify-between flex-shrink-0">
+                        <h3 class="font-bold text-gray-900">Thông tin nhóm</h3>
+                        <button onclick="document.getElementById('groupInfoSidebar').classList.add('hidden')"
+                            class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                    </div>
+
+                    <!-- Group Profile Section (Mockup) -->
+                    <div class="bg-white px-5 py-6 flex flex-col items-center border-b border-gray-100 flex-shrink-0">
+                        <div class="relative w-20 h-20 mb-3">
+                            <div id="sidebarGroupAvatar"
+                                class="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-3xl shadow-sm">
+                                G
+                            </div>
+                            <button id="editGroupAvatarBtn"
+                                onclick="document.getElementById('groupAvatarFileInput').click()"
+                                class="absolute bottom-0 right-0 w-6 h-6 bg-primary hover:bg-primary-dark text-white rounded-full flex items-center justify-center text-[10px] shadow transition border-2 border-white focus:outline-none">
+                                <i class="fas fa-camera"></i>
+                            </button>
+                            <input type="file" id="groupAvatarFileInput" class="hidden" accept="image/*"
+                                onchange="uploadGroupAvatar()">
+                        </div>
+
+                        <div class="flex items-center justify-center gap-2 mb-1 w-full px-4">
+                            <div id="groupNameDisplayArea"
+                                class="flex items-center justify-center gap-2 truncate max-w-full">
+                                <h4 id="sidebarGroupName" class="font-bold text-gray-900 text-base truncate"
+                                    title="Tên nhóm">Tên nhóm</h4>
+                                <button id="editGroupNameBtn" onclick="startRenameGroup()"
+                                    class="text-gray-400 hover:text-gray-600 focus:outline-none flex-shrink-0"
+                                    title="Đổi tên nhóm">
+                                    <i class="fas fa-pencil-alt text-sm"></i>
+                                </button>
+                            </div>
+                            <div id="groupNameEditArea" class="hidden flex items-center gap-1.5 w-full">
+                                <input type="text" id="groupNameEditInput"
+                                    class="w-full border border-gray-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-primary transition font-semibold"
+                                    placeholder="Tên nhóm...">
+                                <button onclick="saveRenameGroup()"
+                                    class="bg-green-500 hover:bg-green-600 text-white rounded-lg p-1 text-xs font-bold transition flex-shrink-0"><i
+                                        class="fas fa-check"></i></button>
+                                <button onclick="cancelRenameGroup()"
+                                    class="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg p-1 text-xs font-bold transition flex-shrink-0"><i
+                                        class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+
+                        <span id="sidebarMemberCount" class="text-xs text-gray-500">0 thành viên</span>
+                    </div>
+
+                    <div class="bg-white p-2 border-b border-gray-100 flex shadow-sm z-10">
+                        <button
+                            class="flex-1 text-xs font-bold py-2 rounded-lg text-primary bg-primary/10 transition group-tab-btn"
+                            onclick="switchGroupTab('members', this)">THÀNH VIÊN</button>
+                        <button
+                            class="flex-1 text-xs font-bold py-2 rounded-lg text-gray-500 hover:bg-gray-50 transition group-tab-btn"
+                            onclick="switchGroupTab('documents', this)">TÀI LIỆU</button>
+                        <button
+                            class="flex-1 text-xs font-bold py-2 rounded-lg text-gray-500 hover:bg-gray-50 transition group-tab-btn relative"
+                            onclick="switchGroupTab('requests', this)">
+                            DUYỆT
+                            <span id="requestCountBadge"
+                                class="hidden absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                        </button>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                        <!-- Members Tab -->
+                        <div id="tabGroupMembers" class="space-y-3">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Danh sách
+                                    thành viên</span>
+                                <button id="addMemberInlineBtn" onclick="openAddMemberModal()"
+                                    class="bg-red-50 hover:bg-red-100 text-primary px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1 focus:outline-none">
+                                    <i class="fas fa-plus text-[10px]"></i> Thêm
+                                </button>
+                            </div>
+                            <div id="groupInfoMembersList" class="space-y-2">
+                                <p class="text-center text-xs text-gray-400 py-4">Đang tải...</p>
+                            </div>
+                        </div>
+
+                        <!-- Documents Tab -->
+                        <div id="tabGroupDocuments" class="space-y-4 hidden flex flex-col h-full">
+                            <!-- Search Bar -->
+                            <div class="relative w-full">
+                                <input type="text" id="searchDocInput" placeholder="Tìm tài liệu..."
+                                    class="w-full bg-gray-50 border border-gray-200 rounded-full pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-primary focus:bg-white transition">
+                                <i
+                                    class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                            </div>
+
+                            <!-- Category Filter Chips -->
+                            <div class="flex gap-1.5 overflow-x-auto pb-1.5 scrollbar-none" id="docCategoryChips">
+                                <button onclick="filterDocsByCategory('', this)"
+                                    class="doc-chip-btn active px-3 py-1 bg-primary text-white border border-transparent rounded-full text-[10px] font-semibold transition whitespace-nowrap">Tất
+                                    cả</button>
+                                <button onclick="filterDocsByCategory('Đề thi', this)"
+                                    class="doc-chip-btn px-3 py-1 bg-white hover:bg-gray-50 border border-gray-200 text-gray-500 rounded-full text-[10px] font-semibold transition whitespace-nowrap">Đề
+                                    thi</button>
+                                <button onclick="filterDocsByCategory('Bài giảng', this)"
+                                    class="doc-chip-btn px-3 py-1 bg-white hover:bg-gray-50 border border-gray-200 text-gray-500 rounded-full text-[10px] font-semibold transition whitespace-nowrap">Bài
+                                    giảng</button>
+                                <button onclick="filterDocsByCategory('Bài tập', this)"
+                                    class="doc-chip-btn px-3 py-1 bg-white hover:bg-gray-50 border border-gray-200 text-gray-500 rounded-full text-[10px] font-semibold transition whitespace-nowrap">Bài
+                                    tập</button>
+                                <button onclick="filterDocsByCategory('Ghi chú', this)"
+                                    class="doc-chip-btn px-3 py-1 bg-white hover:bg-gray-50 border border-gray-200 text-gray-500 rounded-full text-[10px] font-semibold transition whitespace-nowrap">Ghi
+                                    chú</button>
+                                <button onclick="filterDocsByCategory('Khác', this)"
+                                    class="doc-chip-btn px-3 py-1 bg-white hover:bg-gray-50 border border-gray-200 text-gray-500 rounded-full text-[10px] font-semibold transition whitespace-nowrap">Khác</button>
+                            </div>
+
+                            <!-- Documents List -->
+                            <div id="groupInfoDocumentsList"
+                                class="space-y-3 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+                                <p class="text-center text-xs text-gray-400 py-4">Chưa có tài liệu nào</p>
+                            </div>
+
+                            <!-- Upload Button (Dotted Red Border) -->
+                            <button onclick="openUploadDocModal()"
+                                class="w-full bg-red-50/50 hover:bg-red-50 border border-dashed border-primary text-primary font-bold py-2.5 rounded-xl transition text-xs flex items-center justify-center gap-2 mt-2 focus:outline-none">
+                                <i class="fas fa-cloud-upload-alt"></i> Upload tài liệu
+                            </button>
+                        </div>
+
+                        <!-- Requests Tab -->
+                        <div id="tabGroupRequests" class="space-y-3 hidden">
+                            <div id="groupInfoRequestsList" class="space-y-3">
+                                <p class="text-center text-xs text-gray-400 py-4">Không có yêu cầu nào</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
 
-    <!-- Create Group Modal -->
-    <div id="groupModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh]">
+    <!-- Upload Document Modal -->
+    <div id="uploadDocModal"
+        class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
             <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                <h3 class="font-bold text-lg text-gray-900">Tạo nhóm mới</h3>
-                <button onclick="closeGroupModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                <h3 class="font-bold text-lg text-gray-900">Tải tài liệu lên</h3>
+                <button onclick="closeUploadDocModal()" class="text-gray-400 hover:text-gray-600"><i
+                        class="fas fa-times"></i></button>
             </div>
-            <div class="p-6 space-y-5 overflow-y-auto flex-1">
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Tên nhóm</label>
-                    <input type="text" id="groupNameInput" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition" placeholder="VD: Hội sinh viên PTIT">
+            <div class="p-6 space-y-4">
+                <div class="border-2 border-dashed border-blue-200 bg-blue-50 hover:bg-blue-100 rounded-2xl p-6 text-center cursor-pointer transition"
+                    onclick="document.getElementById('docFileInput').click()">
+                    <i class="fas fa-file-upload text-3xl text-blue-500 mb-2"></i>
+                    <p class="text-sm font-semibold text-blue-700" id="docFileNameDisplay">Nhấn để chọn file</p>
+                    <p class="text-xs text-blue-400 mt-1">Tối đa 50MB (PDF, DOCX, XLSX, PPTX...)</p>
+                    <input type="file" id="docFileInput" class="hidden"
+                        onchange="document.getElementById('docFileNameDisplay').textContent = this.files[0] ? this.files[0].name : 'Nhấn để chọn file'">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-500 mb-2 uppercase">Chọn thành viên</label>
-                    <div id="friendsSelectionList" class="space-y-1">
+                    <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Tên hiển thị</label>
+                    <input type="text" id="docNameInput"
+                        class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Danh mục tài liệu</label>
+                    <select id="docCategoryInput"
+                        class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition">
+                        <option value="Khác">Khác</option>
+                        <option value="Đề thi">Đề thi</option>
+                        <option value="Bài giảng">Bài giảng</option>
+                        <option value="Bài tập">Bài tập</option>
+                        <option value="Ghi chú">Ghi chú</option>
+                    </select>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+                <button onclick="closeUploadDocModal()"
+                    class="px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-full transition">Hủy</button>
+                <button onclick="submitUploadDoc()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full text-sm font-bold transition shadow-md flex items-center gap-2">
+                    <i class="fas fa-upload"></i> Tải lên
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Group Modal -->
+    <div id="groupModal"
+        class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 class="font-bold text-lg text-gray-900">Tạo nhóm mới</h3>
+                <button onclick="closeGroupModal()" class="text-gray-400 hover:text-gray-600"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-5 overflow-y-auto flex-1 custom-scrollbar">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Tên nhóm</label>
+                    <input type="text" id="groupNameInput"
+                        class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition"
+                        placeholder="VD: Hội sinh viên PTIT">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Quyền riêng tư</label>
+                        <select id="groupPrivacyInput"
+                            class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition">
+                            <option value="PRIVATE">Riêng tư (Chỉ mời)</option>
+                            <option value="PUBLIC">Công khai (Vào ngay)</option>
+                            <option value="REQUIRES_APPROVAL">Yêu cầu duyệt</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Danh mục</label>
+                        <select id="groupCategoryInput"
+                            class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition">
+                            <option value="Khác">Khác</option>
+                            <option value="Môn học">Môn học</option>
+                            <option value="Chuyên ngành">Chuyên ngành</option>
+                            <option value="Đồ án">Đồ án</option>
+                            <option value="NCKH">NCKH</option>
+                            <option value="CLB">CLB</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Mô tả (Tùy chọn)</label>
+                    <textarea id="groupDescInput" rows="2"
+                        class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition resize-none"
+                        placeholder="Viết vài dòng mô tả về nhóm..."></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-2 uppercase">Chọn thành viên ban đầu</label>
+                    <div id="friendsSelectionList"
+                        class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar border border-gray-100 rounded-xl p-2">
                         <!-- Friend checkboxes -->
                     </div>
                 </div>
             </div>
             <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
-                <button onclick="closeGroupModal()" class="px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-full transition">Hủy</button>
-                <button onclick="submitCreateGroup()" class="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-full text-sm font-bold transition shadow-md">Tạo nhóm</button>
+                <button onclick="closeGroupModal()"
+                    class="px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-full transition">Hủy</button>
+                <button onclick="submitCreateGroup()"
+                    class="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-full text-sm font-bold transition shadow-md">Tạo
+                    nhóm</button>
             </div>
         </div>
     </div>
 
     <!-- Add Member Modal -->
-    <div id="addMemberModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div id="addMemberModal"
+        class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh]">
             <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h3 class="font-bold text-lg text-gray-900">Thêm thành viên vào nhóm</h3>
-                <button onclick="closeAddMemberModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                <button onclick="closeAddMemberModal()" class="text-gray-400 hover:text-gray-600"><i
+                        class="fas fa-times"></i></button>
             </div>
             <div class="p-6 space-y-5 overflow-y-auto flex-1">
                 <div id="addMemberSelectionList" class="space-y-1">
@@ -194,8 +432,30 @@
                 </div>
             </div>
             <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
-                <button onclick="closeAddMemberModal()" class="px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-full transition">Hủy</button>
-                <button onclick="submitAddMember()" class="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-full text-sm font-bold transition shadow-md">Thêm thành viên</button>
+                <button onclick="closeAddMemberModal()"
+                    class="px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-full transition">Hủy</button>
+                <button onclick="submitAddMember()"
+                    class="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-full text-sm font-bold transition shadow-md">Thêm
+                    thành viên</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group Members Modal -->
+    <div id="groupMembersModal"
+        class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh]">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 class="font-bold text-lg text-gray-900">Thành viên nhóm (<span id="groupMembersCount">0</span>)</h3>
+                <button onclick="closeGroupMembersModal()" class="text-gray-400 hover:text-gray-600"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 max-h-[60vh] custom-scrollbar" id="groupMembersList">
+                <p class="text-center text-gray-400 text-sm py-4">Đang tải...</p>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+                <button onclick="closeGroupMembersModal()"
+                    class="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-full text-sm font-bold transition shadow-md">Đóng</button>
             </div>
         </div>
     </div>
@@ -203,7 +463,7 @@
     <script src="js/auth.js"></script>
     <script src="js/chat.js"></script>
     <script>
-        function toggleUserMenu() { 
+        function toggleUserMenu() {
             document.getElementById('userMenu').classList.toggle('hidden');
             const notiMenu = document.getElementById('notiMenu');
             if (notiMenu && !notiMenu.classList.contains('hidden')) {

@@ -5,14 +5,14 @@ const loginForm = document.getElementById('loginForm');
 if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const username = document.getElementById('username').value;
+        const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
 
         try {
             const response = await fetch(`${API_URL}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ email, password })
             });
 
             if (response.ok) {
@@ -25,7 +25,12 @@ if (loginForm) {
                     window.location.href = 'home.html';
                 }
             } else {
-                alert('Đăng nhập thất bại. Vui lòng kiểm tra lại tên đăng nhập và mật khẩu.');
+                if (response.status === 403) {
+                    const errorMsg = await response.text();
+                    alert(errorMsg || 'Tài khoản của bạn đã bị khóa.');
+                } else {
+                    alert('Đăng nhập thất bại. Vui lòng kiểm tra lại email và mật khẩu.');
+                }
             }
         } catch (error) {
             console.error('Error:', error);
@@ -39,22 +44,31 @@ const registerForm = document.getElementById('registerForm');
 if (registerForm) {
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const username = document.getElementById('username').value;
         const fullName = document.getElementById('fullName').value;
+        const email = document.getElementById('email').value;
+        const studentId = document.getElementById('studentId').value;
+        const major = document.getElementById('major').value;
         const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (password !== confirmPassword) {
+            alert('Mật khẩu và xác nhận mật khẩu không trùng khớp.');
+            return;
+        }
 
         try {
             const response = await fetch(`${API_URL}/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, fullName, password })
+                body: JSON.stringify({ email, fullName, studentId, major, password })
             });
 
             if (response.ok) {
                 alert('Đăng ký thành công! Vui lòng đăng nhập.');
                 window.location.href = 'login.html';
             } else {
-                alert('Đăng ký thất bại. Tên đăng nhập có thể đã tồn tại.');
+                const errorText = await response.text();
+                alert(errorText || 'Đăng ký thất bại. Email hoặc Mã sinh viên có thể đã tồn tại.');
             }
         } catch (error) {
             console.error('Error:', error);
@@ -190,3 +204,35 @@ document.addEventListener('DOMContentLoaded', () => {
         setInterval(fetchNotifications, 30000);
     }
 });
+
+// Helper for API calls
+async function apiGet(endpoint) {
+    const res = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+    if (!res.ok) {
+        let errStr = 'Error';
+        try { errStr = await res.text(); } catch(e) {}
+        throw new Error(errStr);
+    }
+    return await res.json();
+}
+
+async function apiPost(endpoint, bodyData) {
+    const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(bodyData)
+    });
+    if (!res.ok) {
+        let errStr = 'Error';
+        try { errStr = await res.text(); } catch(e) {}
+        throw new Error(errStr);
+    }
+    return await res.json();
+}

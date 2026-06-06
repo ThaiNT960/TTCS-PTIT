@@ -51,12 +51,12 @@ function escapeHtml(unsafe) {
          .replace(/'/g, "&#039;");
 }
 
-var TAG_COLORS = {
-    '#just-for-fun': 'hashtag-blue',
-    '#quan-trọng':   'hashtag-red',
-    '#hỏi-đáp':     'hashtag-green',
-    '#chia-sẻ':     'hashtag-purple',
-    '#học-tập':     'hashtag-yellow'
+const TAG_COLORS = {
+    '#just-for-fun': 'text-blue-600 bg-blue-50 inline-block px-1.5 py-0.5 rounded-full',
+    '#quan-trọng':   'text-red-500 bg-red-50 inline-block px-1.5 py-0.5 rounded-full',
+    '#hỏi-đáp':      'text-green-600 bg-green-50 inline-block px-1.5 py-0.5 rounded-full',
+    '#chia-sẻ':      'text-purple-600 bg-purple-50 inline-block px-1.5 py-0.5 rounded-full',
+    '#học-tập':      'text-yellow-700 bg-yellow-50 inline-block px-1.5 py-0.5 rounded-full'
 };
 
 function renderContent(content) {
@@ -64,8 +64,8 @@ function renderContent(content) {
     var escaped = escapeHtml(content);
     escaped = escaped.replace(/(#[\w\u00C0-\u024F\u1E00-\u1EFF-]+)/g, function(match) {
         var lower = match.toLowerCase();
-        var colorClass = TAG_COLORS[lower] || 'hashtag-default';
-        return '<span class="hashtag-tag ' + colorClass + '">' + match + '</span>';
+        var colorClass = TAG_COLORS[lower] || 'text-gray-600 bg-gray-100 inline-block px-1.5 py-0.5 rounded-full';
+        return '<span class="' + colorClass + '">' + match + '</span>';
     });
     return escaped;
 }
@@ -83,6 +83,18 @@ function formatTime(dateStr) {
     if (diffHour < 24) return `${diffHour} giờ trước`;
     if (diffDay < 30) return `${diffDay} ngày trước`;
     return d.toLocaleDateString('vi-VN');
+}
+
+function formatAbsoluteTime(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    const pad = (n) => n.toString().padStart(2, '0');
+    const hours = pad(d.getHours());
+    const minutes = pad(d.getMinutes());
+    const day = pad(d.getDate());
+    const month = pad(d.getMonth() + 1);
+    const year = d.getFullYear();
+    return `${hours}:${minutes} ${day}/${month}/${year}`;
 }
 
 let allPostsData = [];
@@ -109,32 +121,56 @@ function clearSearch() {
     }
 }
 
-async function loadPosts(user, searchQuery = '') {
+let currentPage = 0;
+
+async function loadPosts(user, searchQuery = '', append = false) {
     currentUserObj = user;
     try {
-        let url = `${API_URL}/posts`;
-        if (searchQuery) url += `?search=${encodeURIComponent(searchQuery)}`;
+        if (!append) currentPage = 0;
+        let url = `${API_URL}/posts?page=${currentPage}&size=10`;
+        if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
         
         const res = await fetch(url);
-        const posts = await res.json();
+        const data = await res.json();
+        const posts = data.content || [];
         const feed = document.getElementById('postsFeed');
-        feed.innerHTML = '';
-        allPostsData = posts || [];
+        
+        if (!append) {
+            feed.innerHTML = '';
+            allPostsData = posts || [];
+        } else {
+            allPostsData = allPostsData.concat(posts);
+        }
 
-        if (!posts.length) {
+        if (!allPostsData.length) {
             feed.innerHTML = `<div class="bg-white rounded-2xl shadow-sm p-8 text-center text-gray-400 text-sm">` + (searchQuery ? `Không tìm thấy bài viết nào phù hợp.` : `Chưa có bài viết nào. Hãy đăng bài đầu tiên!`) + `</div>`;
         } else {
             posts.forEach(post => renderPost(post, user, feed));
         }
+
+        const oldBtn = document.getElementById('loadMoreBtn');
+        if (oldBtn) oldBtn.remove();
+
+        if (data.totalPages && currentPage < data.totalPages - 1) {
+            const btn = document.createElement('button');
+            btn.id = 'loadMoreBtn';
+            btn.className = 'w-full py-3 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-xl text-sm font-semibold transition mt-2 mb-6';
+            btn.textContent = 'Xem thêm bài viết';
+            btn.onclick = () => {
+                currentPage++;
+                loadPosts(user, searchQuery, true);
+            };
+            feed.appendChild(btn);
+        }
         
-        extractTopics(allPostsData);
+        if (!append) extractTopics(allPostsData);
     } catch (e) {
         console.error(e);
     }
 }
 
 function renderPost(post, user, container) {
-    const initials = (post.userFullName || post.username || '?').charAt(0).toUpperCase();
+    const initials = (post.fullName || post.username || '?').charAt(0).toUpperCase();
     const isOwner = post.username === user.username;
     const isAdmin = user.role === 'ROLE_ADMIN';
     const liked = post.liked;
@@ -156,17 +192,32 @@ function renderPost(post, user, container) {
         currentBtnClass = `curr-${currentReaction}`;
     }
 
-    const div = document.createElement('div');
-    div.id = `post-${post.id}`;
-    div.className = 'bg-white rounded-2xl shadow-sm mb-4 overflow-hidden fade-up';
-    div.innerHTML = `
-        <div class="p-5">
+    const existingEl = document.getElementById(`post-${post.id}`);
+    let commentsHidden = true;
+    let commentInputValue = '';
+    let commentInputParentId = '';
+    let commentInputPlaceholder = 'Viết bình luận...';
+    if (existingEl) {
+        const commentsEl = existingEl.querySelector(`#comments-${post.id}`);
+        if (commentsEl) {
+            commentsHidden = commentsEl.classList.contains('hidden');
+        }
+        const inputEl = existingEl.querySelector(`#comment-input-${post.id}`);
+        if (inputEl) {
+            commentInputValue = inputEl.value;
+            commentInputParentId = inputEl.dataset.parentId || '';
+            commentInputPlaceholder = inputEl.placeholder || 'Viết bình luận...';
+        }
+    }
+
+    const postContentHtml = `
+        <div class="p-5 pb-0">
             <div class="flex items-center gap-3 mb-3">
                 <a href="profile.html?username=${post.username}" class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden hover:opacity-80 transition no-underline">
-                    ${post.userAvatar ? `<img src="${post.userAvatar}" class="w-full h-full object-cover">` : initials}
+                    ${post.avatar ? `<img src="${post.avatar}" class="w-full h-full object-cover">` : initials}
                 </a>
                 <div class="flex-1 min-w-0">
-                    <a href="profile.html?username=${post.username}" class="font-semibold text-gray-900 text-sm hover:underline">${post.userFullName || post.username}</a>
+                    <a href="profile.html?username=${post.username}" class="font-semibold text-gray-900 text-sm hover:underline">${post.fullName || post.username}</a>
                     <p class="text-xs text-gray-400">${formatTime(post.createdAt)}</p>
                 </div>
                 ${(isOwner || isAdmin) ? `
@@ -175,10 +226,12 @@ function renderPost(post, user, container) {
                 </button>` : ''}
             </div>
             <p class="text-gray-800 text-sm leading-relaxed mb-3" style="white-space: pre-wrap;">${renderContent(post.content)}</p>
-            ${post.imageUrl ? `<img src="${post.imageUrl}" alt="Post image" class="w-full rounded-xl mb-3 max-h-96 object-cover" onerror="this.style.display='none'">` : ''}
-            <div class="flex items-center justify-between text-xs text-gray-400 mb-3 px-1 border-b border-gray-100 pb-3">
-                <div class="flex items-center gap-1 cursor-pointer hover:underline" onclick="showReactionList(${post.id})">
-                    <span class="text-primary bg-primary bg-opacity-10 rounded-full w-5 h-5 flex items-center justify-center text-[10px]"><i class="fas fa-thumbs-up"></i></span>
+            ${post.imageUrl ? `
+            <a href="${post.imageUrl}" target="_blank" class="block mb-3 hover:opacity-95 transition" title="Bấm để xem ảnh gốc">
+                <img src="${post.imageUrl}" alt="Post image" class="w-full rounded-xl max-h-96 object-cover" onerror="this.style.display='none'">
+            </a>` : ''}
+            <div class="flex items-center justify-between text-xs text-gray-400 px-1 border-b border-gray-100 pb-4 mb-0">
+                <div class="cursor-pointer hover:underline" onclick="showReactionList(${post.id})">
                     <span>${totalReactionCount} lượt thích</span>
                 </div>
                 <div class="cursor-pointer hover:underline" onclick="toggleComments(${post.id})">
@@ -186,7 +239,7 @@ function renderPost(post, user, container) {
                 </div>
             </div>
         </div>
-        <div class="flex px-2 py-1">
+        <div class="flex px-4 pt-1.5 pb-2">
             <div class="flex-1 reaction-container">
                 <div class="reaction-menu">
                     <span class="reaction-icon emoji-like" onclick="reactToPost(${post.id}, 'LIKE')"><i class="fas fa-thumbs-up"></i></span>
@@ -194,7 +247,7 @@ function renderPost(post, user, container) {
                     <span class="reaction-icon emoji-sad" onclick="reactToPost(${post.id}, 'SAD')"><i class="far fa-sad-tear"></i></span>
                     <span class="reaction-icon emoji-angry" onclick="reactToPost(${post.id}, 'ANGRY')"><i class="far fa-angry"></i></span>
                 </div>
-                <button onclick="reactToPost(${post.id}, '${currentReaction === 'LIKE' ? 'NONE' : 'LIKE'}')" 
+                <button onclick="reactToPost(${post.id}, '${(currentReaction && currentReaction !== 'NONE') ? 'NONE' : 'LIKE'}')" 
                     class="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-semibold transition hover:bg-gray-50 ${currentBtnClass}">
                     ${currentReactHtml}
                 </button>
@@ -203,19 +256,35 @@ function renderPost(post, user, container) {
                 <i class="far fa-comment"></i> Bình luận
             </button>
         </div>
-        <div id="comments-${post.id}" class="hidden border-t border-gray-100 p-4 bg-gray-50">
+        <div id="comments-${post.id}" class="${commentsHidden ? 'hidden' : ''} border-t border-gray-100 p-4 bg-gray-50">
             <div id="comments-list-${post.id}">
-                ${renderCommentsHtml(post.id, post.comments)}
+                ${renderCommentsHtml(post.id, post.comments, user.username, post.username, user.role === 'ROLE_ADMIN')}
             </div>
             <div class="flex gap-2 mt-2">
-                <input type="text" id="comment-input-${post.id}" placeholder="Viết bình luận..."
+                <input type="text" id="comment-input-${post.id}" placeholder="${escapeHtml(commentInputPlaceholder)}"
                     class="flex-1 bg-white border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-primary transition"
                     onkeyup="if(event.key==='Enter') submitComment(${post.id})">
                 <button onclick="submitComment(${post.id})" class="bg-primary hover:bg-primary-dark text-white text-xs font-semibold px-4 py-2 rounded-full transition">Gửi</button>
             </div>
         </div>
     `;
-    container.appendChild(div);
+
+    if (existingEl) {
+        existingEl.innerHTML = postContentHtml;
+        const newInputEl = existingEl.querySelector(`#comment-input-${post.id}`);
+        if (newInputEl) {
+            newInputEl.value = commentInputValue;
+            if (commentInputParentId) {
+                newInputEl.dataset.parentId = commentInputParentId;
+            }
+        }
+    } else {
+        const div = document.createElement('div');
+        div.id = `post-${post.id}`;
+        div.className = 'bg-white rounded-2xl shadow-sm mb-4 overflow-hidden fade-up';
+        div.innerHTML = postContentHtml;
+        container.appendChild(div);
+    }
 }
 
 function toggleComments(postId) {
@@ -233,7 +302,7 @@ async function reactToPost(postId, reactionType) {
         });
         const data = await res.json();
         if (data.success || data.liked !== undefined) {
-            loadPosts(user, document.getElementById('searchInput') ? document.getElementById('searchInput').value.trim() : '');
+            await refreshSinglePost(postId);
         }
     } catch (e) { console.error(e); }
 }
@@ -259,9 +328,13 @@ async function showReactionList(postId) {
         body.innerHTML = users.map(u => `
             <div class="flex items-center justify-between mb-3">
                 <a href="profile.html?username=${u.username}" class="flex items-center gap-3 no-underline hover:opacity-80">
-                    <div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold relative overflow-hidden">
-                        ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : (u.fullName||u.username).charAt(0).toUpperCase()}
-                        <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 text-[10px]">${iconMap[u.reactionType] || iconMap['LIKE']}</div>
+                    <div class="w-10 h-10 relative flex-shrink-0">
+                        <div class="w-full h-full rounded-full bg-primary text-white flex items-center justify-center font-bold overflow-hidden">
+                            ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : (u.fullName||u.username).charAt(0).toUpperCase()}
+                        </div>
+                        <div class="absolute -bottom-1 -right-1 bg-white rounded-full w-5 h-5 flex items-center justify-center shadow-sm" style="font-size: 10px;">
+                            ${iconMap[u.reactionType] || iconMap['LIKE']}
+                        </div>
                     </div>
                     <span class="font-semibold text-sm text-gray-900">${u.fullName || u.username}</span>
                 </a>
@@ -279,6 +352,22 @@ async function deletePost(postId) {
     } catch (e) { console.error(e); }
 }
 
+window.deleteComment = async function(commentId, postId) {
+    if (!confirm('Bạn có chắc chắn muốn xóa bình luận này?')) return;
+    try {
+        const res = await fetch(`${API_URL}/posts/comments/${commentId}`, { method: 'DELETE' });
+        if (res.ok) {
+            await refreshSinglePost(postId);
+        } else {
+            const err = await res.json();
+            alert(err.error || 'Lỗi khi xóa bình luận');
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Lỗi kết nối khi xóa bình luận');
+    }
+};
+
 async function submitComment(postId) {
     const user = checkAuth();
     const input = document.getElementById(`comment-input-${postId}`);
@@ -294,11 +383,11 @@ async function submitComment(postId) {
         input.value = '';
         delete input.dataset.parentId;
         input.placeholder = 'Viết bình luận...';
-        loadPosts(user, document.getElementById('searchInput') ? document.getElementById('searchInput').value.trim() : '');
+        await refreshSinglePost(postId);
     } catch (e) { console.error(e); }
 }
 
-window.renderCommentsHtml = function(postId, comments) {
+window.renderCommentsHtml = function(postId, comments, currentUserUsername, postOwnerUsername, isSystemAdmin) {
     if (!comments || comments.length === 0) return '';
     const topLevel = comments.filter(c => !c.parentCommentId);
     const repliesMap = {};
@@ -316,6 +405,14 @@ window.renderCommentsHtml = function(postId, comments) {
         const marginClass = isReply ? 'ml-8 mt-2' : 'mb-3';
         const avatarSize = isReply ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-xs';
 
+        const isCommentAuthor = c.username === currentUserUsername;
+        const isPostOwner = postOwnerUsername === currentUserUsername;
+        const canDelete = isCommentAuthor || isPostOwner || isSystemAdmin;
+        
+        const deleteBtnHtml = canDelete ? `
+            <button onclick="deleteComment(${c.id}, ${postId})" class="text-gray-400 hover:text-red-500 transition text-[10px] ml-1 font-semibold">Xóa</button>
+        ` : '';
+
         return `
             <div class="flex flex-col ${marginClass}">
                 <div class="flex gap-3">
@@ -327,10 +424,11 @@ window.renderCommentsHtml = function(postId, comments) {
                             <a href="profile.html?username=${c.username}" class="font-semibold text-xs text-gray-700 mb-0.5 hover:underline">${c.fullName || c.username}</a>
                             <p class="text-sm text-gray-800 break-words">${c.content}</p>
                         </div>
-                        <div class="text-[11px] text-gray-500 mt-1 ml-2 flex gap-3">
-                            <button onclick="reactToComment(${c.id})" class="font-semibold hover:underline transition ${likeBtnClass}">Thích ${likeCountStr}</button>
+                        <div class="text-[11px] text-gray-500 mt-1 ml-2 flex gap-3 items-center">
+                            <button onclick="reactToComment(${c.id}, ${postId})" class="font-semibold hover:underline transition ${likeBtnClass}">Thích ${likeCountStr}</button>
                             <button onclick="setReply(${postId}, ${c.id}, '${c.fullName || c.username}')" class="font-semibold hover:underline text-gray-500 transition">Trả lời</button>
                             <span>${formatTime(c.createdAt)}</span>
+                            ${deleteBtnHtml}
                         </div>
                     </div>
                 </div>
@@ -351,7 +449,7 @@ window.setReply = function(postId, commentId, name) {
     }
 };
 
-async function reactToComment(commentId) {
+async function reactToComment(commentId, postId) {
     const user = checkAuth();
     try {
         await fetch(`${API_URL}/posts/comments/${commentId}/reaction`, {
@@ -359,8 +457,30 @@ async function reactToComment(commentId) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({})
         });
-        loadPosts(user, document.getElementById('searchInput') ? document.getElementById('searchInput').value.trim() : '');
+        if (postId) {
+            await refreshSinglePost(postId);
+        } else {
+            loadPosts(user, document.getElementById('searchInput') ? document.getElementById('searchInput').value.trim() : '');
+        }
     } catch (e) { console.error(e); }
+}
+
+async function refreshSinglePost(postId) {
+    if (!currentUserObj) return;
+    try {
+        const res = await fetch(`${API_URL}/posts/${postId}`);
+        if (res.ok) {
+            const post = await res.json();
+            const idx = allPostsData.findIndex(p => p.id === postId);
+            if (idx !== -1) {
+                allPostsData[idx] = post;
+            }
+            const feed = document.getElementById('postsFeed');
+            renderPost(post, currentUserObj, feed);
+        }
+    } catch (e) {
+        console.error("Error refreshing post: ", e);
+    }
 }
 
 function showModerationNotice(type, message) {
@@ -460,7 +580,7 @@ async function loadAnnouncements() {
             const div = document.createElement('div');
             div.className = 'border-b border-gray-100 py-3 px-1 last:border-0 hover:bg-gray-50 transition rounded-lg cursor-default';
             div.innerHTML = `<div class="flex items-center gap-2 mb-1">
-                                <span class="text-xs text-gray-400">${formatTime(ann.createdAt)}</span>
+                                <span class="text-xs text-gray-400">${formatAbsoluteTime(ann.createdAt)}</span>
                              </div>
                              <p class="text-sm font-semibold text-gray-900 mb-0.5">${escapeHtml(ann.title)}</p>
                              <p class="text-xs text-gray-500 line-clamp-2">${escapeHtml(ann.content)}</p>`;

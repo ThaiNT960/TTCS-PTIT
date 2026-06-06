@@ -5,22 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PTIT Social Chat - Đăng Nhập</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="css/style.css">
     <style>
         :root {
-            --ptit-red: #C8102E;
+            --ptit-red: #e53935;
         }
         .bg-ptit-red {
-            background: linear-gradient(135deg, #C8102E 0%, #A00824 100%);
+            background: linear-gradient(135deg, #e53935 0%, #a31010 100%);
         }
         .border-ptit-red {
-            border-color: #C8102E;
+            border-color: #e53935;
         }
         .text-ptit-red {
-            color: #C8102E;
+            color: #e53935;
         }
         .hover-ptit-red:hover {
-            color: #C8102E;
+            color: #e53935;
         }
     </style>
 </head>
@@ -28,36 +27,55 @@
     <div class="w-full max-w-md">
         <div class="bg-white rounded-lg shadow-2xl p-8 border-t-4 border-ptit-red">
             <div class="text-center mb-8">
-                <div class="inline-block bg-ptit-red text-white rounded-full w-16 h-16 flex items-center justify-center mb-4">
-                    <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10.5 1.5H9.5V0h1v1.5zm0 17H9.5v1.5h1V18.5z"></path>
-                        <path d="M4.5 4.5L3.64 3.64 2.5 4.79l.86.86 1.14-1.14zm11 11l-.86-.86-1.14 1.14.86.86 1.14-1.14zM1.5 9.5H0v1h1.5v-1zm17 0h-1.5v1H18v-1z"></path>
-                    </svg>
+                <div class="flex justify-center mb-4">
+                    <div class="bg-red-600 text-white font-extrabold text-lg tracking-wider rounded-2xl w-14 h-14 flex items-center justify-center shadow-lg border border-red-500">
+                        PTIT
+                    </div>
                 </div>
-                <h1 class="text-3xl font-bold text-ptit-red">PTIT Social Chat</h1>
-                <p class="text-gray-600 mt-2 text-sm">Mạng xã hội của Học viện PTIT</p>
+                <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">PTIT Social</h1>
+                <p class="text-gray-500 mt-2 text-sm">Vui lòng nhập thông tin để đăng nhập.</p>
             </div>
 
             <form id="loginForm" class="space-y-4">
                 <div>
-                    <label class="block text-gray-700 font-semibold mb-2 text-sm">Tên đăng nhập</label>
-                    <input type="text" id="username" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-ptit-red transition" placeholder="Nhập tên đăng nhập" required>
+                    <label class="block text-gray-500 font-bold mb-1.5 text-xs uppercase tracking-wider">EMAIL</label>
+                    <input type="email" id="email" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition text-sm" placeholder="you@example.com" required>
                 </div>
 
                 <div>
-                    <label class="block text-gray-700 font-semibold mb-2 text-sm">Mật khẩu</label>
-                    <input type="password" id="password" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-ptit-red transition" placeholder="Nhập mật khẩu" required>
+                    <label class="block text-gray-500 font-bold mb-1.5 text-xs uppercase tracking-wider">MẬT KHẨU</label>
+                    <div class="relative">
+                        <input type="password" id="password" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition text-sm" placeholder="••••••••" required>
+                        <button type="button" onclick="togglePasswordVisibility('password')" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none">
+                            <i class="far fa-eye-slash" id="toggle-icon-password"></i>
+                        </button>
+                    </div>
                 </div>
 
-                <button type="submit" class="w-full bg-ptit-red text-white font-semibold py-3 rounded-lg hover:bg-opacity-90 transition shadow-lg">Đăng Nhập</button>
+                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition shadow-md mt-2">Đăng nhập</button>
             </form>
 
             <div class="mt-6 text-center">
-                <p class="text-gray-600 text-sm">Chưa có tài khoản? <a href="register.html" class="text-ptit-red font-semibold hover:underline">Đăng ký ngay</a></p>
+                <p class="text-gray-500 text-sm">Chưa có tài khoản? <a href="register.html" class="text-red-600 font-bold hover:underline">Đăng ký</a></p>
             </div>
         </div>
     </div>
 
     <script src="js/auth.js"></script>
+    <script>
+        function togglePasswordVisibility(id) {
+            const input = document.getElementById(id);
+            const icon = document.getElementById('toggle-icon-' + id);
+            if (input && icon) {
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.className = 'far fa-eye';
+                } else {
+                    input.type = 'password';
+                    icon.className = 'far fa-eye-slash';
+                }
+            }
+        }
+    </script>
 </body>
 </html>

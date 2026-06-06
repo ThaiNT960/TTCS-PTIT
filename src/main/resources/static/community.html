@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PTIT Social - Cộng đồng</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { primary: '#e53935', 'primary-dark': '#a31010' }
+                }
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/app.css">
+</head>
+
+<body class="bg-gray-50 font-sans text-gray-900">
+
+    <!-- NAVBAR -->
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm" style="height:60px">
+        <div class="max-w-5xl mx-auto px-5 h-full flex items-center justify-between gap-4">
+            <a href="home.html"
+                class="flex items-center gap-2 text-primary font-bold text-lg flex-shrink-0 no-underline">
+                <img src="/img/logo_ptit.svg" alt="PTIT Logo" class="w-10 h-10 object-contain">
+                PTIT Social
+            </a>
+            <div class="flex items-center gap-1">
+                <a href="home.html" class="nav-link"><i class="fas fa-home"></i> Trang chủ</a>
+                <a href="community.html" class="nav-link active"><i class="fas fa-globe"></i> Cộng đồng</a>
+                <a href="friend.html" class="nav-link"><i class="fas fa-user-friends"></i> Bạn bè</a>
+                <a href="chat.html" class="nav-link"><i class="fas fa-comment-dots"></i> Tin nhắn</a>
+            </div>
+            <div class="flex items-center gap-3 flex-shrink-0 relative">
+                <div class="relative" id="notiWrap">
+                    <button onclick="toggleNotiMenu()" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-200 transition focus:outline-none relative">
+                        <i class="fas fa-bell text-lg"></i>
+                        <span id="notiBadge" class="hidden absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white">0</span>
+                    </button>
+                    <div id="notiMenu" class="hidden absolute right-0 top-12 bg-white border border-gray-200 rounded-2xl shadow-xl w-80 overflow-hidden z-50">
+                        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                            <h3 class="font-bold text-gray-900">Thông báo</h3>
+                            <button onclick="markAllNotiAsRead()" class="text-xs text-primary font-semibold hover:underline">Đánh dấu tất cả là đã đọc</button>
+                        </div>
+                        <div id="notiList" class="max-h-96 overflow-y-auto custom-scrollbar">
+                            <p class="text-center text-gray-400 text-sm py-8">Đang tải thông báo...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative" id="navAvatarWrap">
+                    <button onclick="toggleUserMenu()"
+                        class="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-bold focus:outline-none"
+                        id="navAvatar">T</button>
+                    <div id="userMenu"
+                        class="hidden absolute right-0 top-12 bg-white border border-gray-200 rounded-xl shadow-lg w-44 overflow-hidden z-50">
+                        <a href="profile.html"
+                            class="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"><i
+                                class="fas fa-user text-primary w-4"></i> Trang cá nhân</a>
+                        <a href="#" onclick="logout()"
+                            class="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"><i
+                                class="fas fa-sign-out-alt text-primary w-4"></i> Đăng xuất</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="pt-[60px] pb-16 bg-gray-50/50 min-h-screen">
+        <!-- Hero Section -->
+        <div class="bg-gradient-to-b from-red-50/70 via-red-50/20 to-transparent pt-12 pb-14 border-b border-gray-100/50">
+            <div class="max-w-5xl mx-auto px-5 text-center">
+                <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight mb-4">
+                    Khám phá cộng đồng <span class="text-primary font-extrabold">PTIT</span>
+                </h1>
+                <p class="text-gray-500 max-w-2xl mx-auto text-sm md:text-base leading-relaxed">
+                    Nơi sinh viên Bưu chính Viễn thông kết nối, chia sẻ kiến thức, cùng nhau học tập, nghiên cứu khoa học và phát triển dự án.
+                </p>
+                <div class="max-w-xl mx-auto mt-8 relative">
+                    <input type="text" id="searchGroupInput" placeholder="Tìm kiếm nhóm học tập, câu lạc bộ, dự án..." 
+                        class="w-full bg-white border border-gray-200/80 rounded-full pl-12 pr-5 py-3.5 text-sm focus:outline-none focus:border-primary shadow-sm hover:shadow transition duration-200">
+                    <i class="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-base"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Body Section -->
+        <div class="max-w-5xl mx-auto px-5 pt-10">
+            <!-- Section Header -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900">Danh sách cộng đồng</h2>
+                </div>
+            </div>
+
+            <!-- Filter Pills -->
+            <div class="mb-8 flex gap-2 overflow-x-auto pb-2 scrollbar-none" id="categoryFilters">
+                <button class="filter-btn active px-4 py-2 bg-primary text-white border-transparent shadow-sm rounded-full text-sm font-semibold transition whitespace-nowrap" data-category="">Tất cả</button>
+                <button class="filter-btn px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 rounded-full text-sm font-semibold transition whitespace-nowrap" data-category="Môn học">Môn học</button>
+                <button class="filter-btn px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 rounded-full text-sm font-semibold transition whitespace-nowrap" data-category="Chuyên ngành">Chuyên ngành</button>
+                <button class="filter-btn px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 rounded-full text-sm font-semibold transition whitespace-nowrap" data-category="Đồ án">Đồ án</button>
+                <button class="filter-btn px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 rounded-full text-sm font-semibold transition whitespace-nowrap" data-category="NCKH">NCKH</button>
+                <button class="filter-btn px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 rounded-full text-sm font-semibold transition whitespace-nowrap" data-category="CLB">CLB</button>
+                <button class="filter-btn px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 rounded-full text-sm font-semibold transition whitespace-nowrap" data-category="Khác">Khác</button>
+            </div>
+
+            <!-- Groups Grid -->
+            <div id="communityGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Group cards will be rendered here -->
+            </div>
+            
+            <div id="emptyState" class="hidden flex-col items-center justify-center py-16 text-gray-400">
+                <i class="fas fa-users-slash text-5xl mb-4 opacity-50 text-gray-300"></i>
+                <p class="text-sm font-medium">Không tìm thấy nhóm nào phù hợp</p>
+            </div>
+        </div>
+    </main>
+
+    <a href="chat.html"
+        class="fixed bottom-7 right-7 w-13 h-13 bg-primary hover:bg-primary-dark text-white rounded-full flex items-center justify-center text-xl shadow-lg transition z-40"
+        style="width:52px;height:52px">
+        <i class="fas fa-comment-dots"></i>
+    </a>
+
+    <script src="js/auth.js"></script>
+    <script src="js/community.js"></script>
+    <script>
+        function toggleUserMenu() { 
+            document.getElementById('userMenu').classList.toggle('hidden');
+            const notiMenu = document.getElementById('notiMenu');
+            if (notiMenu && !notiMenu.classList.contains('hidden')) {
+                notiMenu.classList.add('hidden');
+            }
+        }
+        document.addEventListener('click', function (e) {
+            if (!document.getElementById('navAvatarWrap').contains(e.target)) document.getElementById('userMenu').classList.add('hidden');
+        });
+    </script>
+</body>
+
+</html>

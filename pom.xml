@@ -13,8 +13,8 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.example123</groupId>
-    <artifactId>demo678</artifactId>
+    <groupId>com.ptit</groupId>
+    <artifactId>socialchat</artifactId>
     <version>0.0.1-SNAPSHOT</version>
 
     <properties>

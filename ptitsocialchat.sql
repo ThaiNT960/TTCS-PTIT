@@ -13,22 +13,23 @@ CREATE TABLE users (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE DEFAULT NULL,
     full_name VARCHAR(255),
     role VARCHAR(255),
     avatar VARCHAR(255) DEFAULT NULL,
     cover_photo VARCHAR(255) DEFAULT NULL,
     bio TEXT,
-    workplace VARCHAR(255),
-    education VARCHAR(255),
-    location VARCHAR(255),
-    privacy_setting VARCHAR(50) DEFAULT 'PUBLIC'
+    workplace VARCHAR(255), -- Mã sinh viên
+    education VARCHAR(255), -- Chuyên ngành
+    location VARCHAR(255),  -- Cơ sở học
+    locked BOOLEAN DEFAULT FALSE
 ) ENGINE=InnoDB;
 
 -- Dữ liệu mẫu (Seed Data)
-INSERT INTO users (id, username, password, full_name, role, avatar) VALUES
-(1, 'vana', '$2a$10$ORNucSuHuZOl6Bdpn054gepjQCAv3bzhD5Yi/wMYJYKvwFiHi7312', 'Nguyễn Văn A', 'ROLE_USER', NULL),
-(2, 'thib', '$2a$10$ORNucSuHuZOl6Bdpn054gepjQCAv3bzhD5Yi/wMYJYKvwFiHi7312', 'Trần Thị B', 'ROLE_USER', NULL),
-(3, 'adminc', '$2a$10$ORNucSuHuZOl6Bdpn054gepjQCAv3bzhD5Yi/wMYJYKvwFiHi7312', 'Lê Văn C', 'ROLE_ADMIN', NULL);
+INSERT INTO users (id, username, password, email, full_name, role, avatar, workplace, education, location) VALUES
+(1, 'vana', '$2a$10$ORNucSuHuZOl6Bdpn054gepjQCAv3bzhD5Yi/wMYJYKvwFiHi7312', 'vana@student.ptit.edu.vn', 'Nguyễn Văn A', 'ROLE_USER', NULL, 'B21DCCN001', 'Công nghệ thông tin', 'PTIT Hà Nội'),
+(2, 'thib', '$2a$10$ORNucSuHuZOl6Bdpn054gepjQCAv3bzhD5Yi/wMYJYKvwFiHi7312', 'thib@student.ptit.edu.vn', 'Trần Thị B', 'ROLE_USER', NULL, 'B21DCCN002', 'Công nghệ thông tin', 'PTIT Hà Nội'),
+(3, 'adminc', '$2a$10$ORNucSuHuZOl6Bdpn054gepjQCAv3bzhD5Yi/wMYJYKvwFiHi7312', 'adminc@ptit.edu.vn', 'Lê Văn C', 'ROLE_ADMIN', NULL, 'ADMIN', 'Quản trị', 'PTIT Hà Nội');
 
 -- ==========================================
 -- 2. BẢNG POSTS (Bài đăng)
@@ -194,16 +195,49 @@ CREATE TABLE friends (
 CREATE TABLE conversations (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255),
-    is_group_chat BOOLEAN DEFAULT FALSE
+    description TEXT,
+    category VARCHAR(100),
+    privacy VARCHAR(50) DEFAULT 'PRIVATE',
+    is_group_chat BOOLEAN DEFAULT FALSE,
+    avatar VARCHAR(500)
 ) ENGINE=InnoDB;
 
 CREATE TABLE conversation_members (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     conversation_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
+    role VARCHAR(50) DEFAULT 'MEMBER',
     joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT FK_CM_CONV FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
     CONSTRAINT FK_CM_USER FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE group_documents (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    file_url VARCHAR(500) NOT NULL,
+    file_type VARCHAR(255),
+    category VARCHAR(50) DEFAULT 'Khác',
+    size_bytes BIGINT DEFAULT 0,
+    downloads INT DEFAULT 0,
+    is_pinned BOOLEAN DEFAULT FALSE,
+    uploader_id BIGINT NOT NULL,
+    conversation_id BIGINT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT FK_GD_UPLOADER FOREIGN KEY (uploader_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT FK_GD_CONV FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE group_join_requests (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    conversation_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    status VARCHAR(50) DEFAULT 'PENDING',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT FK_GJR_CONV FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+    CONSTRAINT FK_GJR_USER FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_group_join (conversation_id, user_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE messages (
