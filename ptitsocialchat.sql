@@ -242,3 +242,14 @@ CREATE TABLE announcements (
     admin_id BIGINT NOT NULL,
     CONSTRAINT FK_ANN_ADMIN FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- V2 Indexes cho Friend Suggestion
+CREATE INDEX idx_friends_user_id ON friends(user_id);
+CREATE INDEX idx_friends_friend_id ON friends(friend_id);
+CREATE INDEX idx_friend_requests_sender_status ON friend_requests(sender_id, status);
+CREATE INDEX idx_friend_requests_receiver_status ON friend_requests(receiver_id, status);
+CREATE INDEX idx_users_education ON users(education);
+CREATE INDEX idx_users_workplace ON users(workplace);
+CREATE INDEX idx_users_location ON users(location);
+CREATE INDEX idx_post_likes_user_post ON post_likes(user_id, post_id);
+CREATE INDEX idx_comments_user_post ON comments(user_id, post_id);
