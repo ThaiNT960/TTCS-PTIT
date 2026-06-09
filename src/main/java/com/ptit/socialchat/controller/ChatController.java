@@ -64,8 +64,13 @@ public class ChatController {
                 com.ptit.socialchat.entity.Message last = lastMsgs.get(0);
                 if (Boolean.TRUE.equals(last.getIsRevoked())) {
                     map.put("lastMessage", "[Tin nhắn đã bị thu hồi]");
-                } else if (last.getImageUrl() != null && !last.getImageUrl().trim().isEmpty() && (last.getContent() == null || last.getContent().trim().isEmpty())) {
-                    map.put("lastMessage", "[Hình ảnh]");
+                } else if (last.getFileUrl() != null && !last.getFileUrl().trim().isEmpty() && (last.getContent() == null || last.getContent().trim().isEmpty())) {
+                    String url = last.getFileUrl().toLowerCase();
+                    if (url.endsWith(".jpg") || url.endsWith(".jpeg") || url.endsWith(".png") || url.endsWith(".gif") || url.endsWith(".webp")) {
+                        map.put("lastMessage", "[Hình ảnh]");
+                    } else {
+                        map.put("lastMessage", "[Tài liệu]");
+                    }
                 } else {
                     map.put("lastMessage", last.getContent());
                 }
@@ -82,7 +87,7 @@ public class ChatController {
     @GetMapping("/history")
     public ResponseEntity<?> getChatHistory(Principal principal, @RequestParam String user2) {
         if (principal == null) {
-            return ResponseEntity.status(401).body("Unauthorized");
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
         User u1 = userService.findByUsername(principal.getName()).orElseThrow();
         User u2 = userService.findByUsername(user2).orElseThrow();
@@ -94,26 +99,12 @@ public class ChatController {
         ));
     }
 
-    @PostMapping("/send")
-    public ResponseEntity<?> sendMessage(@RequestBody Map<String, String> request, Principal principal) {
-        if (principal == null) {
-            return ResponseEntity.status(401).body("Unauthorized");
-        }
-        String receiverUsername = request.get("receiverUsername");
-        String content = request.get("content");
-        String imageUrl = request.get("imageUrl"); // có thể null nếu không gửi ảnh
 
-        User sender = userService.findByUsername(principal.getName()).orElseThrow();
-        User receiver = userService.findByUsername(receiverUsername).orElseThrow();
-
-        chatService.saveMessage(sender, receiver, content, imageUrl);
-        return ResponseEntity.ok(Map.of("status", "ok"));
-    }
 
     @PutMapping("/revoke/{messageId}")
     public ResponseEntity<?> revokeMessage(@PathVariable Long messageId, Principal principal) {
         if (principal == null) {
-            return ResponseEntity.status(401).body("Unauthorized");
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
         User user = userService.findByUsername(principal.getName()).orElseThrow();
         try {
@@ -127,7 +118,7 @@ public class ChatController {
     @DeleteMapping("/history/{otherUsername}")
     public ResponseEntity<?> clearHistory(@PathVariable String otherUsername, Principal principal) {
         if (principal == null) {
-            return ResponseEntity.status(401).body("Unauthorized");
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
         User user = userService.findByUsername(principal.getName()).orElseThrow();
         User other = userService.findByUsername(otherUsername).orElseThrow();
@@ -136,13 +127,22 @@ public class ChatController {
     }
 
     @PostMapping("/group")
-    public ResponseEntity<?> createGroup(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<?> createGroup(@RequestBody Map<String, Object> request, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
         String name = (String) request.get("name");
         List<String> usernames = (List<String>) request.get("usernames");
         if (usernames == null || usernames.size() < 3) {
             return ResponseEntity.badRequest().body(Map.of("error", "Nhóm chat phải có từ 3 người trở lên."));
         }
-        com.ptit.socialchat.entity.Conversation conv = chatService.createGroupConversation(name, usernames);
+        String creatorUsername = principal.getName();
+        String privacy = (String) request.get("privacy");
+        String category = (String) request.get("category");
+        String description = (String) request.get("description");
+        com.ptit.socialchat.entity.Conversation conv = chatService.createGroupConversation(
+                name, usernames, creatorUsername, privacy, category, description
+        );
         return ResponseEntity.ok(conv);
     }
 
@@ -158,7 +158,7 @@ public class ChatController {
     @GetMapping("/group-history")
     public ResponseEntity<?> getGroupHistory(Principal principal, @RequestParam Long conversationId) {
         if (principal == null) {
-            return ResponseEntity.status(401).body("Unauthorized");
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
         User user = userService.findByUsername(principal.getName()).orElseThrow();
         com.ptit.socialchat.entity.Conversation conv = chatService.getConversation(conversationId).orElseThrow();
@@ -172,7 +172,7 @@ public class ChatController {
     @DeleteMapping("/group-history/{conversationId}")
     public ResponseEntity<?> clearGroupHistory(@PathVariable Long conversationId, Principal principal) {
         if (principal == null) {
-            return ResponseEntity.status(401).body("Unauthorized");
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
         User user = userService.findByUsername(principal.getName()).orElseThrow();
         com.ptit.socialchat.entity.Conversation conv = chatService.getConversation(conversationId).orElseThrow();
@@ -183,7 +183,7 @@ public class ChatController {
     @PostMapping("/group/{conversationId}/leave")
     public ResponseEntity<?> leaveGroup(@PathVariable Long conversationId, Principal principal) {
         if (principal == null) {
-            return ResponseEntity.status(401).body("Unauthorized");
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
         User user = userService.findByUsername(principal.getName()).orElseThrow();
         com.ptit.socialchat.entity.Conversation conv = chatService.getConversation(conversationId).orElseThrow();
@@ -204,7 +204,7 @@ public class ChatController {
     @PostMapping("/group/{conversationId}/add-members")
     public ResponseEntity<?> addMembersToGroup(@PathVariable Long conversationId, @RequestBody Map<String, Object> request, Principal principal) {
         if (principal == null) {
-            return ResponseEntity.status(401).body("Unauthorized");
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
         User currentUser = userService.findByUsername(principal.getName()).orElseThrow();
         List<String> usernames = (List<String>) request.get("usernames");
@@ -223,7 +223,7 @@ public class ChatController {
                 .orElseThrow(() -> new IllegalArgumentException("Nhóm chat không tồn tại"));
         
         if (conversationMemberRepository.findByConversationAndUser(conv, user).isEmpty()) {
-            return ResponseEntity.status(403).body(Map.of("error", "Bạn không phải là thành viên của nhóm này"));
+            return ResponseEntity.status(403).body(Map.of("error", "Bạn không phải là thành viên của nhóm này."));
         }
         
         List<com.ptit.socialchat.entity.ConversationMember> members = conversationMemberRepository.findByConversation(conv);

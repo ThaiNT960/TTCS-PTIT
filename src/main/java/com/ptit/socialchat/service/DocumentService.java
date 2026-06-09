@@ -37,7 +37,7 @@ public class DocumentService {
         // Kiểm tra quyền (phải là thành viên mới được upload)
         boolean isMember = memberRepository.findByConversationAndUser(conversation, uploader).isPresent();
         if (!isMember) {
-            throw new IllegalArgumentException("Bạn không phải thành viên nhóm này");
+            throw new org.springframework.security.access.AccessDeniedException("Bạn không phải là thành viên của nhóm này.");
         }
 
         String originalFilename = file.getOriginalFilename();
@@ -68,12 +68,17 @@ public class DocumentService {
     }
 
     @Transactional
-    public void incrementDownload(Long documentId) {
-        GroupDocument doc = documentRepository.findById(documentId).orElse(null);
-        if (doc != null) {
-            doc.setDownloads(doc.getDownloads() + 1);
-            documentRepository.save(doc);
+    public void incrementDownload(Long documentId, User user) {
+        GroupDocument doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài liệu"));
+        
+        boolean isMember = memberRepository.findByConversationAndUser(doc.getConversation(), user).isPresent();
+        if (!isMember) {
+            throw new org.springframework.security.access.AccessDeniedException("Bạn không phải là thành viên của nhóm này.");
         }
+        
+        doc.setDownloads(doc.getDownloads() + 1);
+        documentRepository.save(doc);
     }
     
     @Transactional
@@ -86,7 +91,7 @@ public class DocumentService {
         boolean isAdminOrCoAdmin = member != null && ("ADMIN".equals(member.getRole()) || "CO_ADMIN".equals(member.getRole()));
         
         if (!isUploader && !isAdminOrCoAdmin) {
-            throw new IllegalArgumentException("Bạn không có quyền xóa tài liệu này");
+            throw new org.springframework.security.access.AccessDeniedException("Bạn không có quyền xóa tài liệu này.");
         }
         
         // Xóa file vật lý
@@ -107,7 +112,7 @@ public class DocumentService {
                 .orElseThrow(() -> new IllegalArgumentException("Bạn không thuộc nhóm này"));
                 
         if ("MEMBER".equals(member.getRole())) {
-            throw new IllegalArgumentException("Chỉ Quản trị viên mới được ghim tài liệu");
+            throw new org.springframework.security.access.AccessDeniedException("Chỉ quản trị viên mới có quyền ghim tài liệu trong nhóm.");
         }
         
         doc.setPinned(!doc.getPinned());

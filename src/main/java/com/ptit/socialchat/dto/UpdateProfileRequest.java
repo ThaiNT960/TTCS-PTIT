@@ -7,6 +7,7 @@ import lombok.Setter;
 @Setter
 public class UpdateProfileRequest {
     private String fullName;
+    private String email;
     private String bio;
     private String studentId;
     private String major;

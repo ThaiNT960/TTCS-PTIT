@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,18 +28,57 @@ public class FriendService {
     private SimpMessagingTemplate messagingTemplate;
 
     public FriendRequest sendRequest(User sender, User receiver) {
-        FriendRequest request = new FriendRequest();
-        request.setSender(sender);
-        request.setReceiver(receiver);
-        request.setStatus("PENDING");
-        request.setCreatedAt(LocalDateTime.now());
+        if (sender.getId().equals(receiver.getId())) {
+            throw new IllegalArgumentException("Bạn không thể gửi lời mời kết bạn cho chính mình.");
+        }
+
+        // 1. Kiểm tra xem đã là bạn bè chưa
+        if (friendRepository.findByUserAndFriend(sender, receiver).isPresent()) {
+            throw new IllegalArgumentException("Hai người đã là bạn bè từ trước.");
+        }
+
+        // 2. Kiểm tra xem đối phương đã gửi yêu cầu cho mình trước đó và đang PENDING hay không
+        Optional<FriendRequest> incomingRequest = friendRequestRepository
+                .findBySenderAndReceiverAndStatus(receiver, sender, "PENDING");
+        if (incomingRequest.isPresent()) {
+            throw new IllegalArgumentException("Người dùng này đã gửi lời mời kết bạn cho bạn. Vui lòng chấp nhận lời mời từ họ.");
+        }
+
+        // 3. Kiểm tra yêu cầu gửi đi từ sender -> receiver cũ
+        Optional<FriendRequest> existingRequestOpt = friendRequestRepository.findBySenderAndReceiver(sender, receiver);
+        FriendRequest request;
+        if (existingRequestOpt.isPresent()) {
+            request = existingRequestOpt.get();
+            if ("PENDING".equals(request.getStatus())) {
+                throw new IllegalArgumentException("Yêu cầu kết bạn đã được gửi và đang chờ phản hồi.");
+            }
+            if ("ACCEPTED".equals(request.getStatus())) {
+                throw new IllegalArgumentException("Hai người đã là bạn bè từ trước.");
+            }
+            // Nếu là REJECTED, cập nhật lại trạng thái thành PENDING để gửi lại lời mời
+            request.setStatus("PENDING");
+            request.setCreatedAt(LocalDateTime.now());
+        } else {
+            request = new FriendRequest();
+            request.setSender(sender);
+            request.setReceiver(receiver);
+            request.setStatus("PENDING");
+            request.setCreatedAt(LocalDateTime.now());
+        }
+
         FriendRequest savedRequest = friendRequestRepository.save(request);
         notificationService.createNotification(receiver, sender, com.ptit.socialchat.enums.NotificationType.FRIEND_REQUEST, "friend.html");
         return savedRequest;
     }
 
-    public void acceptRequest(Long requestId) {
+    public void acceptRequest(Long requestId, User currentUser) {
         FriendRequest request = friendRequestRepository.findById(requestId).orElseThrow();
+        if (!request.getReceiver().getId().equals(currentUser.getId())) {
+            throw new org.springframework.security.access.AccessDeniedException("Bạn không có quyền chấp nhận yêu cầu này.");
+        }
+        if (!"PENDING".equals(request.getStatus())) {
+            throw new IllegalArgumentException("Yêu cầu kết bạn này đã được xử lý từ trước.");
+        }
         request.setStatus("ACCEPTED");
         friendRequestRepository.save(request);
 
@@ -68,8 +108,14 @@ public class FriendService {
         return friendRequestRepository.findByReceiverAndStatus(user, "PENDING");
     }
 
-    public void rejectRequest(Long requestId) {
+    public void rejectRequest(Long requestId, User currentUser) {
         FriendRequest request = friendRequestRepository.findById(requestId).orElseThrow();
+        if (!request.getReceiver().getId().equals(currentUser.getId())) {
+            throw new org.springframework.security.access.AccessDeniedException("Bạn không có quyền từ chối yêu cầu này.");
+        }
+        if (!"PENDING".equals(request.getStatus())) {
+            throw new IllegalArgumentException("Yêu cầu kết bạn này đã được xử lý từ trước.");
+        }
         request.setStatus("REJECTED");
         friendRequestRepository.save(request);
     }

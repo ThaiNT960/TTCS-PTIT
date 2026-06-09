@@ -2,7 +2,7 @@ var API_URL = window.location.origin + '/api';
 
 function debounce(func, wait) {
     let timeout;
-    return function(...args) {
+    return function (...args) {
         clearTimeout(timeout);
         timeout = setTimeout(() => func.apply(this, args), wait);
     };
@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = 'home.html';
         return;
     }
-    
+
     // Set admin display name
     var adminNameEl = document.getElementById('adminName');
     if (adminNameEl) {
@@ -82,9 +82,9 @@ function showToast(message, type) {
     var icon = document.getElementById('toastIcon');
     var iconBg = document.getElementById('toastIconBg');
     var msg = document.getElementById('toastMessage');
-    
+
     msg.textContent = message;
-    
+
     if (type === 'success') {
         icon.className = 'fas fa-check text-emerald-600';
         iconBg.className = 'w-8 h-8 rounded-full flex items-center justify-center bg-emerald-50';
@@ -95,15 +95,15 @@ function showToast(message, type) {
         icon.className = 'fas fa-info text-blue-600';
         iconBg.className = 'w-8 h-8 rounded-full flex items-center justify-center bg-blue-50';
     }
-    
+
     toast.classList.remove('hidden');
-    setTimeout(function() { toast.classList.add('hidden'); }, 3000);
+    setTimeout(function () { toast.classList.add('hidden'); }, 3000);
 }
 
 function changeView(view) {
     // Hide all views
     document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
-    
+
     // Show selected view
     var targetSec = document.getElementById('view-' + view);
     if (targetSec) targetSec.classList.remove('hidden');
@@ -127,13 +127,13 @@ function changeView(view) {
 }
 
 function updateModeUI(mode) {
-    document.querySelectorAll('.mode-card').forEach(function(card) {
+    document.querySelectorAll('.mode-card').forEach(function (card) {
         card.classList.remove('active');
         card.querySelector('.mode-icon').classList.remove('bg-primary', 'text-white');
         card.querySelector('.mode-icon').classList.add('bg-gray-200', 'text-gray-500');
     });
     var activeCard = document.getElementById('mode-' + mode);
-    if(activeCard) {
+    if (activeCard) {
         activeCard.classList.add('active');
         activeCard.querySelector('.mode-icon').classList.remove('bg-gray-200', 'text-gray-500');
         activeCard.querySelector('.mode-icon').classList.add('bg-primary', 'text-white');
@@ -142,51 +142,48 @@ function updateModeUI(mode) {
 
 async function loadDashboardStats() {
     try {
-        const res = await fetch(`${API_URL}/admin/dashboard`);
-        if (res.ok) {
-            const data = await res.json();
-            
-            // Statistics counters
-            document.getElementById('statUsers').textContent = data.usersCount ?? '-';
-            document.getElementById('statPosts').textContent = data.postsCount ?? '-';
-            document.getElementById('statMessages').textContent = data.messagesCount ?? '-';
-            document.getElementById('statLockedUsers').textContent = data.lockedUsersCount ?? '0';
-            document.getElementById('statPending').textContent = data.pendingCount ?? '-';
-            document.getElementById('statRejected').textContent = data.rejectedCount ?? '-';
-            
-            // Post view counts
-            document.getElementById('tabAllCount').textContent = data.postsCount ?? 0;
-            document.getElementById('tabPendingCount').textContent = data.pendingCount ?? 0;
-            document.getElementById('tabRejectedCount').textContent = data.rejectedCount ?? 0;
-            
-            // Shortcuts badges
-            document.getElementById('shortcutLockedCount').textContent = (data.lockedUsersCount ?? 0) + ' bị khóa';
-            document.getElementById('shortcutPendingCount').textContent = (data.pendingCount ?? 0) + ' chờ';
-            
-            updateModeUI(data.moderationMode);
-            
-            // Render line chart
-            chartDataObj = data.chartData;
-            if (chartDataObj) {
-                renderChart();
-            }
-            
-            // Render top tables
-            renderTopPosts(data.topPosts);
-            renderTopUsers(data.topUsers);
+        const data = await apiGet(`${API_URL}/admin/dashboard`);
+
+        // Statistics counters
+        document.getElementById('statUsers').textContent = data.usersCount ?? '-';
+        document.getElementById('statPosts').textContent = data.postsCount ?? '-';
+        document.getElementById('statMessages').textContent = data.messagesCount ?? '-';
+        document.getElementById('statLockedUsers').textContent = data.lockedUsersCount ?? '0';
+        document.getElementById('statPending').textContent = data.pendingCount ?? '-';
+        document.getElementById('statRejected').textContent = data.rejectedCount ?? '-';
+
+        // Post view counts
+        document.getElementById('tabAllCount').textContent = data.postsCount ?? 0;
+        document.getElementById('tabPendingCount').textContent = data.pendingCount ?? 0;
+        document.getElementById('tabRejectedCount').textContent = data.rejectedCount ?? 0;
+
+        // Shortcuts badges
+        document.getElementById('shortcutLockedCount').textContent = (data.lockedUsersCount ?? 0) + ' bị khóa';
+        document.getElementById('shortcutPendingCount').textContent = (data.pendingCount ?? 0) + ' chờ';
+
+        updateModeUI(data.moderationMode);
+
+        // Render line chart
+        chartDataObj = data.chartData;
+        if (chartDataObj) {
+            renderChart();
         }
-    } catch(e) { console.error(e); }
+
+        // Render top tables
+        renderTopPosts(data.topPosts);
+        renderTopUsers(data.topUsers);
+    } catch (e) { console.error(e); }
 }
 
 function renderChart() {
     if (!chartDataObj) return;
-    
+
     var labels = chartDataObj.labels || [];
     var data = [];
     var labelName = '';
     var color = '';
     var fillColor = '';
-    
+
     if (currentChartType === 'posts') {
         data = chartDataObj.posts || [];
         labelName = 'Bài viết mới';
@@ -203,14 +200,14 @@ function renderChart() {
         color = '#3b82f6';
         fillColor = 'rgba(59, 130, 246, 0.05)';
     }
-    
+
     var ctx = document.getElementById('activityChart');
     if (!ctx) return;
-    
+
     if (myChart) {
         myChart.destroy();
     }
-    
+
     myChart = new Chart(ctx.getContext('2d'), {
         type: 'line',
         data: {
@@ -274,7 +271,7 @@ function renderTopPosts(posts) {
         tbody.innerHTML = `<tr><td colspan="3" class="text-center text-gray-400 py-6">Không có dữ liệu bài viết nổi bật.</td></tr>`;
         return;
     }
-    
+
     tbody.innerHTML = posts.map(p => `
         <tr class="hover:bg-gray-50/50">
             <td class="py-3 font-semibold text-gray-900">${escapeHtml(p.authorName)}</td>
@@ -290,7 +287,7 @@ function renderTopUsers(users) {
         tbody.innerHTML = `<tr><td colspan="3" class="text-center text-gray-400 py-6">Không có dữ liệu người dùng hoạt động.</td></tr>`;
         return;
     }
-    
+
     tbody.innerHTML = users.map(u => `
         <tr class="hover:bg-gray-50/50">
             <td class="py-3">
@@ -314,13 +311,12 @@ async function loadUsers() {
         const searchInput = document.getElementById('userSearchInput');
         const search = searchInput ? searchInput.value.trim() : '';
         const url = search ? `${API_URL}/admin/users?search=${encodeURIComponent(search)}` : `${API_URL}/admin/users`;
-        const res = await fetch(url);
-        const users = await res.json();
+        const users = await apiGet(url);
         const tbody = document.getElementById('usersTableBody');
         tbody.innerHTML = users.map((u, index) => {
             let statusBadge = '';
             let lockBtn = '';
-            
+
             if (u.locked) {
                 statusBadge = `<span class="status-badge bg-rose-50 text-rose-600"><i class="fas fa-user-slash mr-1"></i>Bị khóa</span>`;
                 lockBtn = `<button onclick="toggleLockUser(${u.id})" class="text-xs text-emerald-500 hover:text-emerald-700 transition px-2.5 py-1.5 rounded-lg hover:bg-emerald-50 font-semibold"><i class="fas fa-unlock"></i> Mở khóa</button>`;
@@ -328,14 +324,14 @@ async function loadUsers() {
                 statusBadge = `<span class="status-badge bg-emerald-50 text-emerald-600"><i class="fas fa-check-circle mr-1"></i>Hoạt động</span>`;
                 lockBtn = `<button onclick="toggleLockUser(${u.id})" class="text-xs text-amber-500 hover:text-amber-700 transition px-2.5 py-1.5 rounded-lg hover:bg-amber-50 font-semibold"><i class="fas fa-lock"></i> Khóa</button>`;
             }
-            
+
             let deleteBtn = '';
             if (u.role !== 'ROLE_ADMIN') {
                 deleteBtn = `<button onclick="deleteUser(${u.id}, this)" class="text-xs text-gray-400 hover:text-red-500 transition px-2.5 py-1.5 rounded-lg hover:bg-red-50 font-semibold"><i class="fas fa-trash"></i> Xóa</button>`;
             } else {
                 deleteBtn = `<span class="text-xs text-gray-300 px-2.5 py-1.5 font-medium">—</span>`;
             }
-            
+
             return `
             <tr class="hover:bg-gray-50/50">
                 <td class="py-3.5 text-sm text-gray-500 font-medium">${index + 1}</td>
@@ -363,82 +359,75 @@ async function loadUsers() {
 
 async function toggleLockUser(userId) {
     try {
-        const res = await fetch(`${API_URL}/admin/users/${userId}/toggle-lock`, { method: 'POST' });
-        if (res.ok) {
-            const data = await res.json();
-            var statusWord = data.locked ? 'Khóa' : 'Mở khóa';
-            showToast(`Đã ${statusWord.toLowerCase()} tài khoản thành công!`, 'success');
-            loadDashboardStats();
-            loadUsers();
-        } else {
-            showToast('Lỗi khi cập nhật trạng thái tài khoản', 'error');
-        }
-    } catch(e) {
+        const data = await apiPost(`${API_URL}/admin/users/${userId}/toggle-lock`);
+        var statusWord = data.locked ? 'Khóa' : 'Mở khóa';
+        showToast(`Đã ${statusWord.toLowerCase()} tài khoản thành công!`, 'success');
+        loadDashboardStats();
+        loadUsers();
+    } catch (e) {
         console.error(e);
-        showToast('Lỗi kết nối đến máy chủ', 'error');
+        showToast(e.message || 'Lỗi kết nối đến máy chủ', 'error');
     }
 }
 
 async function createUser() {
-    const username = document.getElementById('newUsername').value.trim();
+    const email = document.getElementById('newEmail').value.trim();
     const fullName = document.getElementById('newFullName').value.trim();
     const password = document.getElementById('newPassword').value.trim();
-    if (!username || !fullName || !password) { alert('Vui lòng điền đầy đủ'); return; }
+    if (!email || !fullName || !password) { alert('Vui lòng điền đầy đủ'); return; }
+
+    // Kiểm tra định dạng email cơ bản
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        alert('Email không đúng định dạng!');
+        return;
+    }
+
     try {
-        const res = await fetch(`${API_URL}/admin/users`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, fullName, password })
-        });
-        if (res.ok) {
-            document.getElementById('addUserModal').classList.add('hidden');
-            document.getElementById('newUsername').value = '';
-            document.getElementById('newFullName').value = '';
-            document.getElementById('newPassword').value = '';
-            showToast('Đã thêm tài khoản thành viên mới', 'success');
-            loadDashboardStats();
-            loadUsers();
-        } else { showToast('Lỗi khi tạo người dùng', 'error'); }
-    } catch (e) { showToast('Lỗi kết nối', 'error'); }
+        await apiPost(`${API_URL}/admin/users`, { email, fullName, password });
+        document.getElementById('addUserModal').classList.add('hidden');
+        document.getElementById('newEmail').value = '';
+        document.getElementById('newFullName').value = '';
+        document.getElementById('newPassword').value = '';
+        // Reset icon con mắt về mặc định ẩn
+        const pwdInput = document.getElementById('newPassword');
+        const icon = document.getElementById('toggle-icon-newPassword');
+        if (pwdInput && icon) {
+            pwdInput.type = 'password';
+            icon.className = 'far fa-eye-slash';
+        }
+        showToast('Đã thêm tài khoản thành viên mới', 'success');
+        loadDashboardStats();
+        loadUsers();
+    } catch (e) { showToast(e.message || 'Lỗi kết nối', 'error'); }
 }
 
 async function deleteUser(userId, btn) {
     if (!confirm('Xóa người dùng này? Thao tác này sẽ xóa mọi dữ liệu liên quan!')) return;
     try {
-        await fetch(`${API_URL}/admin/users/${userId}`, { method: 'DELETE' });
+        await apiDelete(`${API_URL}/admin/users/${userId}`);
         btn.closest('tr').remove();
         showToast('Đã xóa người dùng thành công', 'success');
         loadDashboardStats();
-    } catch (e) { console.error(e); showToast('Lỗi xóa người dùng', 'error'); }
+    } catch (e) { console.error(e); showToast(e.message || 'Lỗi xóa người dùng', 'error'); }
 }
 
 async function setModerationMode(mode) {
     try {
-        const res = await fetch(`${API_URL}/admin/moderation/mode`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mode: mode })
-        });
-        if(res.ok) {
-            updateModeUI(mode);
-            var modeNames = { 'NONE': 'Không kiểm duyệt', 'MANUAL': 'Kiểm duyệt thủ công', 'AUTO_AI': 'Tự động (AI)' };
-            showToast('Đã chuyển sang: ' + modeNames[mode], 'success');
-            loadDashboardStats();
-        } else {
-            const errText = await res.text();
-            console.error('Lỗi đổi chế độ:', errText);
-            showToast('Lỗi đổi chế độ kiểm duyệt', 'error');
-        }
-    } catch(e) { console.error(e); showToast('Lỗi kết nối', 'error'); }
+        await apiPost(`${API_URL}/admin/moderation/mode`, { mode: mode });
+        updateModeUI(mode);
+        var modeNames = { 'NONE': 'Không kiểm duyệt', 'MANUAL': 'Kiểm duyệt thủ công', 'AUTO_AI': 'Tự động (AI)' };
+        showToast('Đã chuyển sang: ' + modeNames[mode], 'success');
+        loadDashboardStats();
+    } catch (e) { console.error(e); showToast(e.message || 'Lỗi kết nối', 'error'); }
 }
 
 async function checkAiService(triggerToast = false) {
     try {
-        const res = await fetch(`${API_URL}/admin/moderation/ai-status`);
-        const data = await res.json();
+        const data = await apiGet(`${API_URL}/admin/moderation/ai-status`);
         var dot = document.getElementById('aiStatusDot');
         var text = document.getElementById('aiStatusText');
-        if(dot && text) {
+        if (dot && text) {
             if (data.available) {
                 dot.className = 'ai-status-dot ai-online';
                 text.className = 'text-emerald-600 font-semibold';
@@ -455,36 +444,36 @@ async function checkAiService(triggerToast = false) {
                 }
             }
         }
-    } catch(e) {
+    } catch (e) {
         console.error(e);
         var dot = document.getElementById('aiStatusDot');
         var text = document.getElementById('aiStatusText');
-        if(dot) dot.className = 'ai-status-dot ai-offline';
-        if(text) { text.className = 'text-red-500 font-semibold'; text.textContent = 'AI Service: Lỗi kết nối'; }
+        if (dot) dot.className = 'ai-status-dot ai-offline';
+        if (text) { text.className = 'text-red-500 font-semibold'; text.textContent = 'AI Service: Lỗi kết nối'; }
         if (triggerToast) {
-            showToast('Lỗi kiểm tra AI Service', 'error');
+            showToast(e.message || 'Lỗi kiểm tra AI Service', 'error');
         }
     }
 }
 
 function switchTab(tab, btn) {
     currentTab = tab;
-    document.querySelectorAll('#view-posts .tab-btn').forEach(function(b) { b.classList.remove('active'); });
-    
+    document.querySelectorAll('#view-posts .tab-btn').forEach(function (b) { b.classList.remove('active'); });
+
     if (btn) {
         btn.classList.add('active');
     } else {
-        var foundBtn = document.querySelector(`#view-posts button[onclick*="'${tab}'"]`) || 
-                       document.querySelector(`#view-posts button[onclick*="${tab}"]`);
+        var foundBtn = document.querySelector(`#view-posts button[onclick*="'${tab}'"]`) ||
+            document.querySelector(`#view-posts button[onclick*="${tab}"]`);
         if (foundBtn) foundBtn.classList.add('active');
     }
 
     var bulkActions = document.getElementById('bulkActions');
-    if(bulkActions) {
+    if (bulkActions) {
         bulkActions.style.display = tab === 'pending' ? 'flex' : 'none';
     }
 
-    document.querySelectorAll('.post-row').forEach(function(row) {
+    document.querySelectorAll('.post-row').forEach(function (row) {
         if (tab === 'all') {
             row.style.display = '';
         } else {
@@ -494,10 +483,10 @@ function switchTab(tab, btn) {
 }
 
 function formatDateDisplay(dateStr) {
-    if(!dateStr) return '';
+    if (!dateStr) return '';
     try {
         return new Date(dateStr).toLocaleString('vi-VN');
-    } catch(e) { return dateStr; }
+    } catch (e) { return dateStr; }
 }
 
 async function loadPosts() {
@@ -505,11 +494,10 @@ async function loadPosts() {
         const searchInput = document.getElementById('postSearchInput');
         const search = searchInput ? searchInput.value.trim() : '';
         const url = search ? `${API_URL}/admin/posts?search=${encodeURIComponent(search)}` : `${API_URL}/admin/posts`;
-        const res = await fetch(url);
-        const posts = await res.json();
+        const posts = await apiGet(url);
         const tbody = document.getElementById('postsTableBody');
-        
-        if(!posts || posts.length === 0) {
+
+        if (!posts || posts.length === 0) {
             tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-6">Không có bài viết nào.</td></tr>';
             return;
         }
@@ -523,13 +511,32 @@ async function loadPosts() {
 
             let aiLabelHtml = '<span class="text-gray-300 text-xs">—</span>';
             if (p.moderationLabel) {
-                if (p.moderationLabel === 'CLEAN') aiLabelHtml = '<span class="text-emerald-600 font-semibold text-xs flex items-center gap-1"><i class="fas fa-leaf text-[10px]"></i>Clean</span>';
-                else if (p.moderationLabel === 'OFFENSIVE') aiLabelHtml = '<span class="text-amber-500 font-semibold text-xs flex items-center gap-1"><i class="fas fa-exclamation-triangle text-[10px]"></i>Offensive</span>';
-                else if (p.moderationLabel === 'HATE') aiLabelHtml = '<span class="text-rose-600 font-semibold text-xs flex items-center gap-1"><i class="fas fa-skull-crossbones text-[10px]"></i>Hate</span>';
-                
-                if (p.moderationConfidence) {
-                    aiLabelHtml += `<span class="text-gray-400 text-[10px] ml-1 font-mono">${(p.moderationConfidence * 100).toFixed(0)}%</span>`;
+                let icon = '';
+                let colorClass = '';
+                let labelText = '';
+                if (p.moderationLabel === 'CLEAN') {
+                    icon = 'fa-leaf';
+                    colorClass = 'text-emerald-600';
+                    labelText = 'Clean';
+                } else if (p.moderationLabel === 'OFFENSIVE') {
+                    icon = 'fa-exclamation-triangle';
+                    colorClass = 'text-amber-500';
+                    labelText = 'Offensive';
+                } else if (p.moderationLabel === 'HATE') {
+                    icon = 'fa-skull-crossbones';
+                    colorClass = 'text-rose-600';
+                    labelText = 'Hate';
                 }
+
+                const confidenceHtml = p.moderationConfidence
+                    ? `<span class="text-gray-400 text-[10px] ml-1 font-mono">${(p.moderationConfidence * 100).toFixed(0)}%</span>`
+                    : '';
+
+                aiLabelHtml = `<div class="flex items-center justify-center gap-1.5 text-xs font-semibold ${colorClass}">
+                    <i class="fas ${icon} text-[10px]"></i>
+                    <span>${labelText}</span>
+                    ${confidenceHtml}
+                </div>`;
             }
 
             let actionsHtml = '';
@@ -541,86 +548,90 @@ async function loadPosts() {
             }
             actionsHtml += `<button onclick="deletePost(${p.id}, this)" class="text-[11px] text-gray-400 hover:text-red-500 transition px-2.5 py-1.5 rounded-lg hover:bg-red-50 font-medium"><i class="fas fa-trash"></i> Xóa</button>`;
 
-            const imageBadge = p.imageUrl ? `<div class="mt-1"><span class="inline-flex items-center gap-1 bg-red-50 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded-full"><i class="far fa-image"></i> 1 ảnh</span></div>` : '';
+            const imageBadge = p.imageUrl ? `
+                <div class="mt-1">
+                    <a href="${p.imageUrl}" target="_blank" class="inline-flex items-center gap-1 bg-red-50 hover:bg-red-100 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded-full transition cursor-pointer" title="Bấm để xem ảnh gốc">
+                        <i class="far fa-image"></i> 1 ảnh
+                    </a>
+                </div>
+            ` : '';
 
             const interactionsHtml = `
-                <div class="flex items-center gap-2.5 text-xs text-gray-500 font-medium">
-                    <span class="flex items-center gap-1"><i class="fas fa-heart text-rose-500"></i> ${p.likeCount || 0}</span>
-                    <span class="flex items-center gap-1"><i class="fas fa-comment text-blue-500"></i> ${(p.comments || []).length}</span>
+                <div class="flex items-center justify-center gap-2 text-[11px] font-bold">
+                    <span class="inline-flex items-center gap-1.5 bg-rose-50 text-rose-600 px-2.5 py-1 rounded-lg">
+                        <i class="fas fa-heart text-rose-500 text-xs"></i> ${p.likeCount || 0}
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 bg-rose-50 text-rose-600 px-2.5 py-1 rounded-lg">
+                        <i class="far fa-comment text-rose-500 text-xs"></i> ${(p.comments || []).length}
+                    </span>
                 </div>
             `;
+
+            const isLongText = p.content && p.content.length > 50;
+            const contentHtml = isLongText
+                ? `<div class="truncate cursor-pointer hover:text-gray-900 transition duration-150" onclick="this.classList.toggle('truncate'); this.classList.toggle('whitespace-normal'); this.classList.toggle('break-words');" title="Bấm để xem đầy đủ / thu gọn">${escapeHtml(p.content)}</div>`
+                : `<div>${escapeHtml(p.content)}</div>`;
 
             return `
             <tr class="hover:bg-gray-50/50 post-row" data-status="${st}">
                 <td class="py-3.5 text-sm text-gray-500 font-medium">${index + 1}</td>
-                <td class="py-3.5">
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm font-semibold text-gray-900">${escapeHtml(p.userFullName || p.username)}</span>
-                    </div>
+                <td class="py-3.5 pl-3">
+                    <span class="text-sm font-semibold text-gray-900 truncate block max-w-[75px]" title="${escapeHtml(p.userFullName || p.username)}">${escapeHtml(p.userFullName || p.username)}</span>
                 </td>
                 <td class="py-3.5 text-sm text-gray-600 max-w-xs">
-                    <div class="truncate">${escapeHtml(p.content)}</div>
+                    ${contentHtml}
                     ${imageBadge}
                 </td>
                 <td class="py-3.5">${interactionsHtml}</td>
-                <td class="py-3.5">${statusBadge}</td>
-                <td class="py-3.5 text-sm">${aiLabelHtml}</td>
-                <td class="py-3.5 text-sm text-gray-500">${formatDateDisplay(p.createdAt)}</td>
-                <td class="py-3.5 text-right"><div class="flex items-center justify-end gap-1">${actionsHtml}</div></td>
+                <td class="py-3.5 text-center">${statusBadge}</td>
+                <td class="py-3.5 text-sm text-center">${aiLabelHtml}</td>
+                <td class="py-3.5 text-sm text-gray-500 text-center">${formatDateDisplay(p.createdAt)}</td>
+                <td class="py-3.5 text-center"><div class="flex items-center justify-center gap-1">${actionsHtml}</div></td>
             </tr>`;
         }).join('');
-        
+
         // Re-apply tab filtering
         switchTab(currentTab, null);
-    } catch(e) { console.error(e); }
+    } catch (e) { console.error(e); }
 }
 
 async function approvePost(postId) {
     try {
-        const res = await fetch(`${API_URL}/admin/posts/${postId}/approve`, { method: 'POST' });
-        if(res.ok) {
-            showToast('Đã phê duyệt bài viết #' + postId, 'success');
-            loadDashboardStats();
-            loadPosts();
-        } else showToast('Lỗi khi phê duyệt bài viết', 'error');
-    } catch(e) { console.error(e); }
+        await apiPost(`${API_URL}/admin/posts/${postId}/approve`);
+        showToast('Đã phê duyệt bài viết #' + postId, 'success');
+        loadDashboardStats();
+        loadPosts();
+    } catch (e) { console.error(e); showToast(e.message || 'Lỗi khi phê duyệt bài viết', 'error'); }
 }
 
 async function rejectPost(postId) {
-    if(!confirm('Từ chối bài viết #' + postId + '?')) return;
+    if (!confirm('Từ chối bài viết #' + postId + '?')) return;
     try {
-        const res = await fetch(`${API_URL}/admin/posts/${postId}/reject`, { method: 'POST' });
-        if(res.ok) {
-            showToast('Đã từ chối bài viết #' + postId, 'success');
-            loadDashboardStats();
-            loadPosts();
-        } else showToast('Lỗi khi từ chối bài viết', 'error');
-    } catch(e) { console.error(e); }
+        await apiPost(`${API_URL}/admin/posts/${postId}/reject`);
+        showToast('Đã từ chối bài viết #' + postId, 'success');
+        loadDashboardStats();
+        loadPosts();
+    } catch (e) { console.error(e); showToast(e.message || 'Lỗi khi từ chối bài viết', 'error'); }
 }
 
 async function approveAllPending() {
-    if(!confirm('Duyệt tất cả bài đang chờ duyệt?')) return;
+    if (!confirm('Duyệt tất cả bài đang chờ duyệt?')) return;
     try {
-        const res = await fetch(`${API_URL}/admin/posts/approve-all`, { method: 'POST' });
-        if(res.ok) {
-            const data = await res.json();
-            showToast(`Đã phê duyệt tất cả ${data.count} bài viết!`, 'success');
-            loadDashboardStats();
-            loadPosts();
-        } else showToast('Lỗi khi phê duyệt hàng loạt', 'error');
-    } catch(e) { console.error(e); }
+        const data = await apiPost(`${API_URL}/admin/posts/approve-all`);
+        showToast(`Đã phê duyệt tất cả ${data.count} bài viết!`, 'success');
+        loadDashboardStats();
+        loadPosts();
+    } catch (e) { console.error(e); showToast(e.message || 'Lỗi khi phê duyệt hàng loạt', 'error'); }
 }
 
 async function deletePost(postId, btn) {
-    if(!confirm('Xóa bài viết này?')) return;
+    if (!confirm('Xóa bài viết này?')) return;
     try {
-        const res = await fetch(`${API_URL}/admin/posts/${postId}`, { method: 'DELETE' });
-        if (res.ok) {
-            showToast('Đã xóa bài viết khỏi cơ sở dữ liệu', 'success');
-            loadDashboardStats();
-            loadPosts();
-        } else showToast('Lỗi khi xóa bài viết', 'error');
-    } catch(e) { console.error(e); }
+        await apiDelete(`${API_URL}/admin/posts/${postId}`);
+        showToast('Đã xóa bài viết khỏi cơ sở dữ liệu', 'success');
+        loadDashboardStats();
+        loadPosts();
+    } catch (e) { console.error(e); showToast(e.message || 'Lỗi khi xóa bài viết', 'error'); }
 }
 
 async function loadAnnouncements() {
@@ -628,10 +639,9 @@ async function loadAnnouncements() {
         const searchInput = document.getElementById('announcementSearchInput');
         const search = searchInput ? searchInput.value.trim() : '';
         const url = search ? `${API_URL}/announcements?search=${encodeURIComponent(search)}` : `${API_URL}/announcements`;
-        const res = await fetch(url);
-        const anns = await res.json();
+        const anns = await apiGet(url);
         const tbody = document.getElementById('announcementsTableBody');
-        if(!anns || anns.length === 0) {
+        if (!anns || anns.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 py-6">Chưa có thông báo nào.</td></tr>';
             return;
         }
@@ -650,44 +660,52 @@ async function loadAnnouncements() {
                 </td>
             </tr>
         `).join('');
-    } catch(e) { console.error(e); }
+    } catch (e) { console.error(e); }
 }
 
 async function createAnnouncement() {
     const title = document.getElementById('annTitle').value.trim();
     const content = document.getElementById('annContent').value.trim();
-    if(!title || !content) { alert('Vui lòng điền đủ Tiêu đề và Nội dung'); return; }
-    
+    if (!title || !content) { alert('Vui lòng điền đủ Tiêu đề và Nội dung'); return; }
+
     try {
-        const res = await fetch(`${API_URL}/announcements`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, content })
-        });
-        if(res.ok) {
-            document.getElementById('addAnnouncementModal').classList.add('hidden');
-            document.getElementById('annTitle').value = '';
-            document.getElementById('annContent').value = '';
-            showToast('Đã đăng tải thông báo thành công!', 'success');
-            loadAnnouncements();
-        } else showToast('Lỗi khi tạo thông báo', 'error');
-    } catch(e) { console.error(e); }
+        await apiPost(`${API_URL}/admin/announcements`, { title, content });
+        document.getElementById('addAnnouncementModal').classList.add('hidden');
+        document.getElementById('annTitle').value = '';
+        document.getElementById('annContent').value = '';
+        showToast('Đã đăng tải thông báo thành công!', 'success');
+        loadAnnouncements();
+    } catch (e) { console.error(e); showToast(e.message || 'Lỗi khi tạo thông báo', 'error'); }
 }
 
 async function deleteAnnouncement(annId) {
-    if(!confirm('Xóa thông báo này?')) return;
+    if (!confirm('Xóa thông báo này?')) return;
     try {
-        const res = await fetch(`${API_URL}/announcements/${annId}`, { method: 'DELETE' });
-        if (res.ok) {
-            showToast('Đã gỡ bỏ thông báo thành công', 'success');
-            loadAnnouncements();
-        } else showToast('Lỗi khi xóa thông báo', 'error');
-    } catch(e) { console.error(e); }
+        await apiDelete(`${API_URL}/admin/announcements/${annId}`);
+        showToast('Đã gỡ bỏ thông báo thành công', 'success');
+        loadAnnouncements();
+    } catch (e) { console.error(e); showToast(e.message || 'Lỗi khi xóa thông báo', 'error'); }
 }
 
 function escapeHtml(unsafe) {
-    if(!unsafe) return "";
+    if (!unsafe) return "";
     return String(unsafe).replace(/[&<"'>]/g, function (m) {
-        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'}[m];
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
     });
+}
+
+function togglePasswordVisibility(id) {
+    const input = document.getElementById(id);
+    const icon = document.getElementById('toggle-icon-' + id);
+    if (input && icon) {
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        }
+    }
 }

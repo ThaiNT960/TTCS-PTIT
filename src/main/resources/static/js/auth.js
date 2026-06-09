@@ -25,12 +25,8 @@ if (loginForm) {
                     window.location.href = 'home.html';
                 }
             } else {
-                if (response.status === 403) {
-                    const errorMsg = await response.text();
-                    alert(errorMsg || 'Tài khoản của bạn đã bị khóa.');
-                } else {
-                    alert('Đăng nhập thất bại. Vui lòng kiểm tra lại email và mật khẩu.');
-                }
+                const errorMsg = await getErrorMessage(response);
+                alert(errorMsg);
             }
         } catch (error) {
             console.error('Error:', error);
@@ -67,8 +63,8 @@ if (registerForm) {
                 alert('Đăng ký thành công! Vui lòng đăng nhập.');
                 window.location.href = 'login.html';
             } else {
-                const errorText = await response.text();
-                alert(errorText || 'Đăng ký thất bại. Email hoặc Mã sinh viên có thể đã tồn tại.');
+                const errorMsg = await getErrorMessage(response);
+                alert(errorMsg);
             }
         } catch (error) {
             console.error('Error:', error);
@@ -99,9 +95,7 @@ async function logout() {
 
 async function fetchNotifications() {
     try {
-        const res = await fetch(`${API_URL}/notifications`);
-        if(!res.ok) return;
-        const notis = await res.json();
+        const notis = await apiGet(`${API_URL}/notifications`);
         
         const badge = document.getElementById('notiBadge');
         const list = document.getElementById('notiList');
@@ -180,13 +174,13 @@ function toggleNotiMenu() {
 
 async function markNotiAsRead(id) {
     try {
-        await fetch(`${API_URL}/notifications/${id}/read`, { method: 'PUT' });
+        await apiPut(`${API_URL}/notifications/${id}/read`);
     } catch(e) { console.error(e); }
 }
 
 async function markAllNotiAsRead() {
     try {
-        await fetch(`${API_URL}/notifications/read-all`, { method: 'PUT' });
+        await apiPut(`${API_URL}/notifications/read-all`);
         fetchNotifications();
     } catch(e) { console.error(e); }
 }
@@ -199,13 +193,57 @@ document.addEventListener('click', function(e) {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-    if(localStorage.getItem('user')) {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+        try {
+            const user = JSON.parse(userStr);
+            setNavAvatar(user);
+        } catch (e) {
+            console.error('Error parsing user for nav avatar:', e);
+        }
         fetchNotifications();
         setInterval(fetchNotifications, 30000);
     }
 });
 
-// Helper for API calls
+function setNavAvatar(user) {
+    const el = document.getElementById('navAvatar');
+    if (!el || !user) return;
+    const initial = (user.fullName || user.username || 'U').charAt(0).toUpperCase();
+    if (user.avatar) {
+        el.innerHTML = `<img src="${user.avatar}" class="w-full h-full object-cover rounded-full" onerror="this.parentElement.textContent='${initial}'">`;
+    } else {
+        el.textContent = initial;
+    }
+}
+
+
+// Helper for API responses and central redirection
+async function handleApiResponse(res) {
+    if (res.status === 401) {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = 'login.html';
+        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+    }
+
+    if (!res.ok) {
+        const errorMsg = await getErrorMessage(res);
+        throw new Error(errorMsg);
+    }
+
+    const contentType = res.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+        try {
+            const text = await res.text();
+            return text ? JSON.parse(text) : {};
+        } catch (e) {
+            return {};
+        }
+    }
+    return await res.text();
+}
+
 async function apiGet(endpoint) {
     const res = await fetch(endpoint, {
         method: 'GET',
@@ -213,26 +251,58 @@ async function apiGet(endpoint) {
             'Content-Type': 'application/json'
         }
     });
-    if (!res.ok) {
-        let errStr = 'Error';
-        try { errStr = await res.text(); } catch(e) {}
-        throw new Error(errStr);
-    }
-    return await res.json();
+    return handleApiResponse(res);
 }
 
 async function apiPost(endpoint, bodyData) {
+    const isFormData = bodyData instanceof FormData;
+    const headers = {};
+    if (!isFormData) {
+        headers['Content-Type'] = 'application/json';
+    }
     const res = await fetch(endpoint, {
         method: 'POST',
+        headers: headers,
+        body: isFormData ? bodyData : JSON.stringify(bodyData)
+    });
+    return handleApiResponse(res);
+}
+
+async function apiPut(endpoint, bodyData) {
+    const isFormData = bodyData instanceof FormData;
+    const headers = {};
+    if (!isFormData) {
+        headers['Content-Type'] = 'application/json';
+    }
+    const res = await fetch(endpoint, {
+        method: 'PUT',
+        headers: headers,
+        body: isFormData ? bodyData : JSON.stringify(bodyData)
+    });
+    return handleApiResponse(res);
+}
+
+async function apiDelete(endpoint) {
+    const res = await fetch(endpoint, {
+        method: 'DELETE',
         headers: {
             'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(bodyData)
+        }
     });
-    if (!res.ok) {
-        let errStr = 'Error';
-        try { errStr = await res.text(); } catch(e) {}
-        throw new Error(errStr);
+    return handleApiResponse(res);
+}
+
+async function getErrorMessage(res) {
+    const defaultMsg = 'Đã có lỗi xảy ra.';
+    try {
+        const rawText = await res.text();
+        try {
+            const errJson = JSON.parse(rawText);
+            return errJson.error || errJson.message || defaultMsg;
+        } catch (e) {
+            return rawText || defaultMsg;
+        }
+    } catch (e) {
+        return defaultMsg;
     }
-    return await res.json();
 }

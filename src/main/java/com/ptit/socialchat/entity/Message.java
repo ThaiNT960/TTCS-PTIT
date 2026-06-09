@@ -24,6 +24,7 @@ public class Message {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Column(name = "created_at")
     private LocalDateTime timestamp;
 
     @ManyToOne
@@ -38,8 +39,11 @@ public class Message {
     @JoinColumn(name = "conversation_id")
     private Conversation conversation;
 
-    @Column(name = "image_url")
-    private String imageUrl;
+    @Column(name = "file_url")
+    private String fileUrl;
+
+    @Column(name = "file_name")
+    private String fileName;
 
     @Builder.Default
     @Column(name = "is_revoked")

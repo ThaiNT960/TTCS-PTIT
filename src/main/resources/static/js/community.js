@@ -51,8 +51,13 @@ async function loadCommunities() {
 function renderCommunities(groups) {
     const grid = document.getElementById('communityGrid');
     const emptyState = document.getElementById('emptyState');
+    const countEl = document.getElementById('activeGroupCount');
     
     grid.innerHTML = '';
+    
+    if (countEl) {
+        countEl.textContent = groups ? groups.length : 0;
+    }
     
     if (!groups || groups.length === 0) {
         grid.classList.add('hidden');
@@ -96,13 +101,17 @@ function renderCommunities(groups) {
                 </button>`;
         }
             
+        const avatarHtml = group.avatar ? 
+            `<img src="${escapeHtml(group.avatar)}" class="w-12 h-12 rounded-full object-cover flex-shrink-0 shadow-sm">` :
+            `<div class="w-12 h-12 bg-red-50 text-primary rounded-full flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-users text-lg"></i>
+             </div>`;
+            
         const card = document.createElement('div');
         card.className = 'bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition duration-200 flex flex-col h-full relative';
         card.innerHTML = `
             <div class="flex gap-4 items-start mb-4">
-                <div class="w-12 h-12 bg-red-50 text-primary rounded-full flex items-center justify-center flex-shrink-0">
-                    <i class="fas fa-users text-lg"></i>
-                </div>
+                ${avatarHtml}
                 <div class="flex-1 min-w-0">
                     <h3 class="font-bold text-base text-gray-900 mb-1.5 truncate" title="${escapeHtml(group.name)}">${escapeHtml(group.name)}</h3>
                     <div class="flex flex-wrap gap-1.5 items-center">

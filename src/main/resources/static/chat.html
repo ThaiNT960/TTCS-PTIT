@@ -25,7 +25,7 @@
 <body class="bg-gray-100 font-sans text-gray-900">
 
     <!-- NAVBAR -->
-    <nav class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm" style="height:60px">
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm nav-bar-height">
         <div class="max-w-5xl mx-auto px-5 h-full flex items-center justify-between gap-4">
             <a href="home.html"
                 class="flex items-center gap-2 text-primary font-bold text-lg flex-shrink-0 no-underline">
@@ -64,7 +64,7 @@
                 <div class="relative" id="navAvatarWrap">
                     <button onclick="toggleUserMenu()"
                         class="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-bold focus:outline-none"
-                        id="navAvatar">T</button>
+                        id="navAvatar"></button>
                     <div id="userMenu"
                         class="hidden absolute right-0 top-12 bg-white border border-gray-200 rounded-xl shadow-lg w-44 overflow-hidden z-50">
                         <a href="profile.html"
@@ -91,6 +91,15 @@
                             class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-600 transition shadow-sm">
                             <i class="fas fa-plus"></i>
                         </button>
+                    </div>
+                    <div class="px-4 py-2 border-b border-gray-100/50">
+                        <div class="relative">
+                            <input type="text" id="searchContactInput" placeholder="Tìm kiếm cuộc hội thoại..."
+                                class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-primary bg-gray-50/50 transition">
+                            <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[11px]">
+                                <i class="fas fa-search"></i>
+                            </div>
+                        </div>
                     </div>
                     <div id="friendsList" class="flex-1 overflow-y-auto p-2">
                         <p class="text-center text-gray-400 text-sm py-8">Đang tải...</p>
@@ -138,16 +147,20 @@
                         Bạn không thể nhắn tin do không còn là bạn bè.
                     </div>
                     <div id="chatInputArea" class="hidden px-4 py-3 border-t border-gray-100 bg-white flex-shrink-0">
-                        <div id="imagePreviewContainer" class="hidden mb-2 relative inline-block">
+                        <div id="imagePreviewContainer" class="hidden mb-2 relative inline-flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg p-2 max-w-xs shadow-sm">
                             <img id="chatImagePreview" src=""
-                                class="h-20 rounded-lg object-cover border border-gray-200">
-                            <button id="cancelImagePreview"
-                                class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shadow hover:bg-red-600">
+                                class="h-16 w-16 rounded object-cover border border-gray-200 hidden">
+                            <div id="chatFilePreview" class="hidden flex items-center gap-2">
+                                <div class="w-10 h-10 rounded bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-[10px]" id="chatFileIcon">PDF</div>
+                                <div class="text-xs text-gray-700 truncate max-w-[150px]" id="chatFileName">file.pdf</div>
+                            </div>
+                            <button type="button" id="cancelImagePreview"
+                                class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shadow hover:bg-red-600 focus:outline-none">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
                         <form id="messageForm" class="flex items-center gap-3">
-                            <input type="file" id="chatImageInput" accept="image/*" class="hidden">
+                            <input type="file" id="chatImageInput" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar" class="hidden">
                             <button type="button" id="chatAttachBtn"
                                 onclick="document.getElementById('chatImageInput').click()"
                                 class="text-gray-400 hover:text-primary transition p-2 focus:outline-none">
@@ -170,8 +183,13 @@
                     <div
                         class="px-5 py-3.5 border-b border-gray-100 bg-white flex items-center justify-between flex-shrink-0">
                         <h3 class="font-bold text-gray-900">Thông tin nhóm</h3>
-                        <button onclick="document.getElementById('groupInfoSidebar').classList.add('hidden')"
-                            class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                        <div class="flex items-center gap-3">
+                            <button id="btnGroupSettings" onclick="openGroupSettingsModal()" class="text-gray-400 hover:text-gray-600 transition focus:outline-none" title="Cài đặt nhóm">
+                                <i class="fas fa-cog text-base"></i>
+                            </button>
+                            <button onclick="document.getElementById('groupInfoSidebar').classList.add('hidden')"
+                                class="text-gray-400 hover:text-gray-600 focus:outline-none"><i class="fas fa-times text-lg"></i></button>
+                        </div>
                     </div>
 
                     <!-- Group Profile Section (Mockup) -->
@@ -214,7 +232,9 @@
                             </div>
                         </div>
 
-                        <span id="sidebarMemberCount" class="text-xs text-gray-500">0 thành viên</span>
+                        <div class="flex items-center justify-center mt-0.5">
+                            <span id="sidebarMemberCount" class="text-xs text-gray-500">0 thành viên</span>
+                        </div>
                     </div>
 
                     <div class="bg-white p-2 border-b border-gray-100 flex shadow-sm z-10">
@@ -456,6 +476,76 @@
             <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end">
                 <button onclick="closeGroupMembersModal()"
                     class="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-full text-sm font-bold transition shadow-md">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cài đặt nhóm (Xem/Sửa cấu hình và Giải tán nhóm) -->
+    <div id="groupSettingsModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 class="font-bold text-lg text-gray-900" id="groupSettingsTitle">Thông tin cấu hình nhóm</h3>
+                <button onclick="closeGroupSettingsModal()" class="text-gray-400 hover:text-gray-600 focus:outline-none"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="p-6 space-y-4">
+                <!-- Chế độ Chỉ đọc (Read-only) dành cho MEMBER -->
+                <div id="settingsViewMode" class="space-y-3 text-sm text-gray-700">
+                    <div class="flex border-b border-gray-50 pb-2.5">
+                        <span class="w-28 font-semibold text-gray-400 text-xs uppercase">Quyền riêng tư</span>
+                        <span id="viewGroupPrivacy" class="font-medium">Công khai</span>
+                    </div>
+                    <div class="flex border-b border-gray-50 pb-2.5">
+                        <span class="w-28 font-semibold text-gray-400 text-xs uppercase">Danh mục</span>
+                        <span id="viewGroupCategory" class="font-medium">Khác</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="font-semibold text-gray-400 text-xs uppercase mb-1.5">Mô tả nhóm</span>
+                        <p id="viewGroupDesc" class="bg-gray-50 rounded-xl p-3 text-xs italic text-gray-600 min-h-[60px] whitespace-pre-line leading-relaxed">Không có mô tả</p>
+                    </div>
+                </div>
+                
+                <!-- Chế độ Chỉnh sửa (Form Edit) dành cho ADMIN/CO_ADMIN -->
+                <div id="settingsEditMode" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Quyền riêng tư</label>
+                        <select id="editGroupPrivacy" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition bg-white">
+                            <option value="PRIVATE">Riêng tư (Chỉ mời)</option>
+                            <option value="PUBLIC">Công khai (Vào ngay)</option>
+                            <option value="REQUIRES_APPROVAL">Yêu cầu duyệt</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Danh mục nhóm</label>
+                        <select id="editGroupCategory" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition bg-white">
+                            <option value="Khác">Khác</option>
+                            <option value="Môn học">Môn học</option>
+                            <option value="Chuyên ngành">Chuyên ngành</option>
+                            <option value="Đồ án">Đồ án</option>
+                            <option value="NCKH">NCKH</option>
+                            <option value="CLB">CLB</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Mô tả nhóm</label>
+                        <textarea id="editGroupDesc" rows="3" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition resize-none" placeholder="Nhập vài dòng mô tả về nhóm..."></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
+                <!-- Nút Giải tán nhóm màu đỏ (chỉ hiển thị cho ADMIN khi ở chế độ chỉnh sửa) -->
+                <button id="btnDisbandGroupInline" onclick="disbandGroup()" class="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-full text-xs font-bold transition flex items-center gap-1.5 hidden focus:outline-none">
+                    <i class="fas fa-trash-alt text-[10px]"></i> Giải tán nhóm
+                </button>
+                
+                <!-- Cụm nút Lưu/Đóng nằm bên phải -->
+                <div class="flex gap-3 ml-auto">
+                    <button onclick="closeGroupSettingsModal()" id="btnCancelSettings" class="px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-full transition focus:outline-none">Đóng</button>
+                    <button onclick="saveGroupSettings()" id="btnSaveSettings" class="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-full text-sm font-bold transition shadow-md hidden flex items-center gap-1 focus:outline-none">
+                        <i class="fas fa-check"></i> Lưu cài đặt
+                    </button>
+                </div>
             </div>
         </div>
     </div>

@@ -38,30 +38,20 @@ CREATE TABLE posts (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     content TEXT,
     image_url VARCHAR(255), -- Kept for compatibility
-    video_url VARCHAR(255),
-    check_in_location VARCHAR(255),
     privacy VARCHAR(50) DEFAULT 'PUBLIC',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     user_id BIGINT NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'APPROVED',
     moderation_label VARCHAR(50) DEFAULT NULL,
     moderation_confidence DOUBLE DEFAULT NULL,
-    CONSTRAINT FK_USER_POST FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    CONSTRAINT FK_USER_POST FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_post_user_id (user_id),
+    INDEX idx_post_created_at (created_at),
+    INDEX idx_post_status (status)
 ) ENGINE=InnoDB;
 
 -- ==========================================
--- 3. BẢNG POST_MEDIA (Đa phương tiện bài đăng)
--- ==========================================
-CREATE TABLE post_media (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    post_id BIGINT NOT NULL,
-    media_url VARCHAR(500) NOT NULL,
-    media_type VARCHAR(50) NOT NULL, -- IMAGE, VIDEO
-    CONSTRAINT FK_MEDIA_POST FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
-
--- ==========================================
--- 4. BẢNG COMMENTS (Bình luận)
+-- 3. BẢNG COMMENTS (Bình luận)
 -- ==========================================
 CREATE TABLE comments (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -77,7 +67,7 @@ CREATE TABLE comments (
 ) ENGINE=InnoDB;
 
 -- ==========================================
--- 5. BẢNG COMMENT_REACTIONS (Cảm xúc bình luận)
+-- 4. BẢNG COMMENT_REACTIONS (Cảm xúc bình luận)
 -- ==========================================
 CREATE TABLE comment_reactions (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -91,7 +81,7 @@ CREATE TABLE comment_reactions (
 ) ENGINE=InnoDB;
 
 -- ==========================================
--- 6. BẢNG POST_LIKES (Lượt thích bài viết)
+-- 5. BẢNG POST_LIKES (Lượt thích bài viết)
 -- ==========================================
 CREATE TABLE post_likes (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -105,53 +95,7 @@ CREATE TABLE post_likes (
 ) ENGINE=InnoDB;
 
 -- ==========================================
--- 7. BẢNG STORIES (Tin tạm thời)
--- ==========================================
-CREATE TABLE stories (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_id BIGINT NOT NULL,
-    media_url VARCHAR(500) NOT NULL,
-    media_type VARCHAR(50) NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    expires_at DATETIME NOT NULL,
-    CONSTRAINT FK_STORY_USER FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
-
-CREATE TABLE story_views (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    story_id BIGINT NOT NULL,
-    viewer_id BIGINT NOT NULL,
-    viewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT FK_SV_STORY FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE,
-    CONSTRAINT FK_SV_USER FOREIGN KEY (viewer_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
-
--- ==========================================
--- 8. BẢNG SOCIAL GROUPS (Hội nhóm)
--- ==========================================
-CREATE TABLE groups_table (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    cover_photo VARCHAR(255),
-    privacy VARCHAR(50) DEFAULT 'PUBLIC',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    creator_id BIGINT NOT NULL,
-    CONSTRAINT FK_GROUP_CREATOR FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
-
-CREATE TABLE group_members (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    group_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    role VARCHAR(50) NOT NULL DEFAULT 'MEMBER', -- ADMIN, MEMBER
-    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT FK_GM_GROUP FOREIGN KEY (group_id) REFERENCES groups_table(id) ON DELETE CASCADE,
-    CONSTRAINT FK_GM_USER FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
-
--- ==========================================
--- 9. BẢNG NOTIFICATIONS (Thông báo)
+-- 6. BẢNG NOTIFICATIONS (Thông báo)
 -- ==========================================
 CREATE TABLE notifications (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -166,7 +110,7 @@ CREATE TABLE notifications (
 ) ENGINE=InnoDB;
 
 -- ==========================================
--- 10. BẢNG FRIEND_REQUESTS & FRIENDS
+-- 7. BẢNG FRIEND_REQUESTS & FRIENDS
 -- ==========================================
 CREATE TABLE friend_requests (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -190,7 +134,7 @@ CREATE TABLE friends (
 ) ENGINE=InnoDB;
 
 -- ==========================================
--- 11. BẢNG CHAT (Messages & Conversations)
+-- 8. BẢNG CHAT (Messages & Conversations)
 -- ==========================================
 CREATE TABLE conversations (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -208,6 +152,7 @@ CREATE TABLE conversation_members (
     user_id BIGINT NOT NULL,
     role VARCHAR(50) DEFAULT 'MEMBER',
     joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_conv_member (conversation_id, user_id),
     CONSTRAINT FK_CM_CONV FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
     CONSTRAINT FK_CM_USER FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
@@ -243,11 +188,12 @@ CREATE TABLE group_join_requests (
 CREATE TABLE messages (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     content TEXT, 
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, 
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
     sender_id BIGINT NOT NULL,
     receiver_id BIGINT DEFAULT NULL,
     conversation_id BIGINT DEFAULT NULL,
-    image_url VARCHAR(500) DEFAULT NULL,
+    file_url VARCHAR(500) DEFAULT NULL,
+    file_name VARCHAR(255) DEFAULT NULL,
     is_revoked BOOLEAN DEFAULT FALSE,
     deleted_by_sender BOOLEAN DEFAULT FALSE,
     deleted_by_receiver BOOLEAN DEFAULT FALSE,
@@ -257,7 +203,7 @@ CREATE TABLE messages (
 ) ENGINE=InnoDB;
 
 -- ==========================================
--- 12. BẢNG CÀI ĐẶT KIỂM DUYỆT & THÔNG BÁO ADMIN
+-- 9. BẢNG CÀI ĐẶT KIỂM DUYỆT & THÔNG BÁO ADMIN
 -- ==========================================
 CREATE TABLE moderation_settings (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,

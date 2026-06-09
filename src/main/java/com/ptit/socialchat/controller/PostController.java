@@ -45,6 +45,12 @@ public class PostController {
         if (principal != null) {
             viewerUser = userService.findByUsername(principal.getName()).orElse(null);
         }
+        if (targetUser.isLocked()) {
+            boolean isAdmin = viewerUser != null && "ROLE_ADMIN".equals(viewerUser.getRole());
+            if (!isAdmin) {
+                throw new IllegalArgumentException("Tài khoản của người dùng này đã bị khóa.");
+            }
+        }
         return postService.getPostsByUser(targetUser, viewerUser, page, size);
     }
 
@@ -65,7 +71,7 @@ public class PostController {
     @PostMapping
     public ResponseEntity<?> createPost(@RequestBody Map<String, String> request, Principal principal) {
         if (principal == null) {
-            return ResponseEntity.status(401).body("Unauthorized");
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
         String content = request.get("content");
         String imageUrl = request.get("imageUrl");
@@ -84,7 +90,7 @@ public class PostController {
     @PostMapping("/{postId}/comments")
     public ResponseEntity<?> addComment(@PathVariable Long postId, @RequestBody Map<String, String> request, Principal principal) {
         if (principal == null) {
-            return ResponseEntity.status(401).body("Unauthorized");
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
         String content = request.get("content");
         String parentIdStr = request.get("parentId");
@@ -99,7 +105,7 @@ public class PostController {
     @PostMapping("/comments/{commentId}/reaction")
     public ResponseEntity<?> reactToComment(@PathVariable Long commentId, @RequestBody Map<String, String> request, Principal principal) {
         if (principal == null) {
-            return ResponseEntity.status(401).body("Unauthorized");
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
         String reactionType = request.get("reactionType");
         User user = userService.findByUsername(principal.getName()).orElseThrow();
@@ -110,7 +116,7 @@ public class PostController {
     @PostMapping("/{postId}/like")
     public ResponseEntity<?> reactToPost(@PathVariable Long postId, @RequestBody Map<String, String> request, Principal principal) {
         if (principal == null) {
-            return ResponseEntity.status(401).body("Unauthorized");
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
         String reactionType = request.get("reactionType");
         User user = userService.findByUsername(principal.getName()).orElseThrow();
@@ -129,7 +135,7 @@ public class PostController {
 
     @DeleteMapping("/{postId}")
     public ResponseEntity<?> deletePost(@PathVariable Long postId, Principal principal) {
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         User user = userService.findByUsername(principal.getName()).orElseThrow();
         try {
             postService.deletePost(postId, user);
@@ -141,7 +147,7 @@ public class PostController {
 
     @DeleteMapping("/comments/{commentId}")
     public ResponseEntity<?> deleteComment(@PathVariable Long commentId, Principal principal) {
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         User user = userService.findByUsername(principal.getName()).orElseThrow();
         try {
             postService.deleteComment(commentId, user);

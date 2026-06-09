@@ -13,7 +13,8 @@ public class MessageDTO {
     private LocalDateTime timestamp;
     private String senderUsername;
     private String receiverUsername;
-    private String imageUrl;
+    private String fileUrl;
+    private String fileName;
     private Boolean isRevoked;
     private String type; // Thêm type để phân loại event trong WebSocket (như REVOKE, UNFRIEND, NEW_MESSAGE)
     private Long conversationId;

@@ -51,6 +51,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/admin/**").hasRole("ADMIN") // Chỉ cho phép vai trò ADMIN truy cập các API quản trị
                 .anyRequest().authenticated() // các request khác bắt buộc phải đăng nhập
             )
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint(new org.springframework.security.web.authentication.HttpStatusEntryPoint(org.springframework.http.HttpStatus.UNAUTHORIZED))
+            )
             .formLogin(login -> login.disable())
             .httpBasic(httpBasic -> httpBasic.disable());
 

@@ -47,7 +47,7 @@ public class ChatSocketController {
         }
 
         com.ptit.socialchat.entity.Message savedMsg = chatService.saveMessage(sender, receiver,
-                messageDTO.getContent(), messageDTO.getImageUrl());
+                messageDTO.getContent(), messageDTO.getFileUrl(), messageDTO.getFileName());
 
         // Gán ID từ database vào DTO để gửi lại cho người dùng
         messageDTO.setId(savedMsg.getId());
@@ -84,7 +84,7 @@ public class ChatSocketController {
         }
 
         com.ptit.socialchat.entity.Message savedMsg = chatService.saveGroupMessage(sender, conv,
-                messageDTO.getContent(), messageDTO.getImageUrl());
+                messageDTO.getContent(), messageDTO.getFileUrl(), messageDTO.getFileName());
 
         // Đồng bộ ID và timestamp từ database
         messageDTO.setId(savedMsg.getId());

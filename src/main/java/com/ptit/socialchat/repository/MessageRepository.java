@@ -36,6 +36,8 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     List<Message> findLatestMessageBetween(User u1, User u2, org.springframework.data.domain.Pageable pageable);
 
     List<Message> findByConversationOrderByTimestampAsc(com.ptit.socialchat.entity.Conversation conversation);
+
+    java.util.Optional<Message> findFirstByConversationOrderByTimestampDesc(com.ptit.socialchat.entity.Conversation conversation);
 }
 
 

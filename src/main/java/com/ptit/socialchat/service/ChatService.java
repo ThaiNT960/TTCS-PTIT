@@ -38,18 +38,40 @@ public class ChatService {
     private com.ptit.socialchat.repository.FriendRepository friendRepository;
 
     @org.springframework.transaction.annotation.Transactional
-    public Conversation createGroupConversation(String name, List<String> usernames) {
+    public Conversation createGroupConversation(String name, List<String> usernames, String creatorUsername, String privacy, String category, String description) {
         Conversation conv = new Conversation();
         conv.setName(name);
         conv.setGroupChat(true);
+        if (privacy != null) {
+            conv.setPrivacy(privacy);
+        }
+        if (category != null) {
+            conv.setCategory(category);
+        }
+        if (description != null) {
+            conv.setDescription(description);
+        }
         conv = conversationRepository.save(conv);
 
-        for (String username : usernames) {
+        List<String> uniqueUsernames = usernames.stream().distinct().collect(Collectors.toList());
+        User creator = userService.findByUsername(creatorUsername).orElseThrow();
+
+        for (String username : uniqueUsernames) {
             User user = userService.findByUsername(username).orElseThrow();
+            if (!username.equals(creatorUsername)) {
+                if (friendRepository.findByUserAndFriend(creator, user).isEmpty()) {
+                    throw new IllegalArgumentException("Bạn chỉ có thể thêm bạn bè vào nhóm: " + user.getFullName());
+                }
+            }
             ConversationMember member = new ConversationMember();
             member.setConversation(conv);
             member.setUser(user);
-            member.setJoinedAt(LocalDateTime.now());
+            member.setJoinedAt(LocalDateTime.of(1970, 1, 1, 0, 0));
+            if (username.equals(creatorUsername)) {
+                member.setRole("ADMIN");
+            } else {
+                member.setRole("MEMBER");
+            }
             conversationMemberRepository.save(member);
         }
         return conv;
@@ -67,22 +89,32 @@ public class ChatService {
                     map.put("name", conv.getName());
                     map.put("avatar", conv.getAvatar());
                     
-                    List<Message> msgs = messageRepository.findByConversationOrderByTimestampAsc(conv);
-                    if (!msgs.isEmpty()) {
-                        Message last = msgs.get(msgs.size() - 1);
-                        map.put("lastMessage", last.getContent());
+                    messageRepository.findFirstByConversationOrderByTimestampDesc(conv).ifPresent(last -> {
+                        if (Boolean.TRUE.equals(last.getIsRevoked())) {
+                            map.put("lastMessage", "[Tin nhắn đã bị thu hồi]");
+                        } else if (last.getFileUrl() != null && !last.getFileUrl().trim().isEmpty() && (last.getContent() == null || last.getContent().trim().isEmpty())) {
+                            String url = last.getFileUrl().toLowerCase();
+                            if (url.endsWith(".jpg") || url.endsWith(".jpeg") || url.endsWith(".png") || url.endsWith(".gif") || url.endsWith(".webp")) {
+                                map.put("lastMessage", "[Hình ảnh]");
+                            } else {
+                                map.put("lastMessage", "[Tài liệu]");
+                            }
+                        } else {
+                            map.put("lastMessage", last.getContent());
+                        }
                         map.put("lastTimestamp", last.getTimestamp());
-                    }
+                    });
                     return map;
                 }).collect(Collectors.toList());
     }
 
-    public Message saveGroupMessage(User sender, Conversation conversation, String content, String imageUrl) {
+    public Message saveGroupMessage(User sender, Conversation conversation, String content, String fileUrl, String fileName) {
         Message message = new Message();
         message.setSender(sender);
         message.setConversation(conversation);
         message.setContent(content);
-        message.setImageUrl(imageUrl);
+        message.setFileUrl(fileUrl);
+        message.setFileName(fileName);
         message.setTimestamp(LocalDateTime.now());
         return messageRepository.save(message);
     }
@@ -120,12 +152,13 @@ public class ChatService {
         return conversationRepository.findById(id);
     }
 
-    public Message saveMessage(User sender, User receiver, String content, String imageUrl) {
+    public Message saveMessage(User sender, User receiver, String content, String fileUrl, String fileName) {
         Message message = new Message();
         message.setSender(sender);
         message.setReceiver(receiver);
         message.setContent(content);
-        message.setImageUrl(imageUrl);
+        message.setFileUrl(fileUrl);
+        message.setFileName(fileName);
         message.setTimestamp(LocalDateTime.now());
         return messageRepository.save(message);
     }
@@ -146,7 +179,8 @@ public class ChatService {
         if (message.getConversation() != null) {
             dto.setConversationId(message.getConversation().getId());
         }
-        dto.setImageUrl(message.getImageUrl());
+        dto.setFileUrl(message.getFileUrl());
+        dto.setFileName(message.getFileName());
         dto.setIsRevoked(message.getIsRevoked());
         return dto;
     }
@@ -161,7 +195,7 @@ public class ChatService {
                 .orElseThrow(() -> new IllegalArgumentException("Tin nhắn không tồn tại"));
         
         if (!message.getSender().getId().equals(currentUser.getId())) {
-            throw new IllegalArgumentException("Chỉ người gửi mới có quyền thu hồi tin nhắn");
+            throw new org.springframework.security.access.AccessDeniedException("Chỉ người gửi mới có quyền thu hồi tin nhắn.");
         }
         
         message.setIsRevoked(true);
@@ -267,9 +301,14 @@ public class ChatService {
 
     @org.springframework.transaction.annotation.Transactional
     public void addMembersToGroupConversation(Conversation conversation, List<String> usernames, User adder) {
-        for (String username : usernames) {
+        List<String> uniqueUsernames = usernames.stream().distinct().collect(Collectors.toList());
+        for (String username : uniqueUsernames) {
             User user = userService.findByUsername(username).orElseThrow();
             
+            if (friendRepository.findByUserAndFriend(adder, user).isEmpty()) {
+                throw new IllegalArgumentException("Bạn chỉ có thể thêm bạn bè vào nhóm: " + user.getFullName());
+            }
+
             boolean alreadyMember = conversationMemberRepository.findByConversation(conversation).stream()
                     .anyMatch(m -> m.getUser().getId().equals(user.getId()));
             
@@ -277,14 +316,14 @@ public class ChatService {
                 ConversationMember member = new ConversationMember();
                 member.setConversation(conversation);
                 member.setUser(user);
-                member.setJoinedAt(LocalDateTime.now());
+                member.setJoinedAt(LocalDateTime.of(1970, 1, 1, 0, 0));
                 conversationMemberRepository.save(member);
                 
                 // Lưu tin nhắn thông báo thêm thành viên
                 Message systemMsg = new Message();
                 systemMsg.setConversation(conversation);
                 systemMsg.setSender(adder);
-                systemMsg.setContent(user.getFullName() + " đã được thêm vào nhóm.");
+                systemMsg.setContent(adder.getFullName() + " đã thêm " + user.getFullName() + " vào nhóm.");
                 systemMsg.setTimestamp(LocalDateTime.now());
                 messageRepository.save(systemMsg);
                 

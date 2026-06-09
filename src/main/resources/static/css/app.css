@@ -98,4 +98,118 @@
     animation: fadeUp 0.2s ease-out;
 }
 
+/* Global Shared Classes */
+.nav-bar-height {
+    height: 60px;
+}
+
+.fab-btn-size {
+    width: 52px;
+    height: 52px;
+}
+
+/* PTIT Theme Colors & Gradients */
+:root {
+    --ptit-red: #e53935;
+}
+.bg-ptit-red {
+    background: linear-gradient(135deg, #e53935 0%, #a31010 100%);
+}
+.border-ptit-red {
+    border-color: #e53935;
+}
+.text-ptit-red {
+    color: #e53935;
+}
+.hover-ptit-red:hover {
+    color: #e53935;
+}
+
+/* Reaction Styles */
+.reaction-container {
+    position: relative;
+}
+
+.reaction-menu {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    border-radius: 50px;
+    padding: 4px 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    pointer-events: none;
+    transition: 0.2s ease-in-out;
+    z-index: 10;
+    border: 1px solid #f3f4f6;
+}
+
+/* Bridge the gap so hover doesn't drop */
+.reaction-menu::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    height: 12px;
+    background: transparent;
+}
+
+.reaction-container:hover .reaction-menu {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.reaction-icon {
+    font-size: 24px;
+    cursor: pointer;
+    transition: transform 0.2s;
+    display: inline-block;
+}
+
+.reaction-icon:hover {
+    transform: scale(1.3) translateY(-4px);
+}
+
+.emoji-like {
+    color: #1b74e4;
+}
+
+.emoji-haha {
+    color: #f7b125;
+}
+
+.emoji-sad {
+    color: #f7b125;
+}
+
+.emoji-angry {
+    color: #e9710f;
+}
+
+.current-reaction {
+    font-weight: bold;
+}
+
+.curr-LIKE {
+    color: #1b74e4 !important;
+}
+
+.curr-HAHA {
+    color: #f7b125 !important;
+}
+
+.curr-SAD {
+    color: #f7b125 !important;
+}
+
+.curr-ANGRY {
+    color: #e9710f !important;
+}
+
+
 

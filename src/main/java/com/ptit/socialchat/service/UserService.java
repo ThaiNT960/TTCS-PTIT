@@ -42,27 +42,6 @@ public class UserService {
 
     @org.springframework.transaction.annotation.Transactional
     public void deleteUserCompletely(Long userId) {
-        // Delete all dependent entities to avoid ConstraintViolationException
-        entityManager.createQuery("DELETE FROM CommentReaction cr WHERE cr.user.id = :uid").setParameter("uid", userId).executeUpdate();
-        entityManager.createQuery("DELETE FROM PostLike pl WHERE pl.user.id = :uid").setParameter("uid", userId).executeUpdate();
-        
-        entityManager.createQuery("DELETE FROM CommentReaction cr WHERE cr.comment.id IN (SELECT c.id FROM Comment c WHERE c.user.id = :uid)").setParameter("uid", userId).executeUpdate();
-        entityManager.createQuery("DELETE FROM Comment c WHERE c.parentCommentId IN (SELECT c2.id FROM Comment c2 WHERE c2.user.id = :uid)").setParameter("uid", userId).executeUpdate();
-        entityManager.createQuery("DELETE FROM Comment c WHERE c.user.id = :uid").setParameter("uid", userId).executeUpdate();
-        
-        entityManager.createQuery("DELETE FROM CommentReaction cr WHERE cr.comment.id IN (SELECT c.id FROM Comment c WHERE c.post.id IN (SELECT p.id FROM Post p WHERE p.user.id = :uid))").setParameter("uid", userId).executeUpdate();
-        entityManager.createQuery("DELETE FROM Comment c WHERE c.post.id IN (SELECT p.id FROM Post p WHERE p.user.id = :uid)").setParameter("uid", userId).executeUpdate();
-        entityManager.createQuery("DELETE FROM PostLike pl WHERE pl.post.id IN (SELECT p.id FROM Post p WHERE p.user.id = :uid)").setParameter("uid", userId).executeUpdate();
-        entityManager.createQuery("DELETE FROM Post p WHERE p.user.id = :uid").setParameter("uid", userId).executeUpdate();
-        
-        entityManager.createQuery("DELETE FROM Friend f WHERE f.user.id = :uid OR f.friend.id = :uid").setParameter("uid", userId).executeUpdate();
-        entityManager.createQuery("DELETE FROM FriendRequest fr WHERE fr.sender.id = :uid OR fr.receiver.id = :uid").setParameter("uid", userId).executeUpdate();
-        
-        entityManager.createQuery("DELETE FROM Notification n WHERE n.user.id = :uid OR n.sender.id = :uid").setParameter("uid", userId).executeUpdate();
-        
-        entityManager.createQuery("DELETE FROM Message m WHERE m.sender.id = :uid OR m.receiver.id = :uid").setParameter("uid", userId).executeUpdate();
-        entityManager.createQuery("DELETE FROM ConversationMember cm WHERE cm.user.id = :uid").setParameter("uid", userId).executeUpdate();
-        
         entityManager.createQuery("DELETE FROM User u WHERE u.id = :uid").setParameter("uid", userId).executeUpdate();
     }
 
@@ -86,6 +65,15 @@ public class UserService {
         User user = userRepository.findByUsername(username).orElseThrow();
         if (request.getFullName() != null)
             user.setFullName(request.getFullName());
+        if (request.getEmail() != null) {
+            String newEmail = request.getEmail().trim();
+            if (!newEmail.isEmpty() && !newEmail.equalsIgnoreCase(user.getEmail())) {
+                if (userRepository.findByEmail(newEmail).isPresent()) {
+                    throw new IllegalArgumentException("Email đã được sử dụng bởi người dùng khác.");
+                }
+                user.setEmail(newEmail);
+            }
+        }
         if (request.getAvatar() != null)
             user.setAvatar(request.getAvatar());
         if (request.getCoverPhoto() != null)
@@ -104,6 +92,21 @@ public class UserService {
 
     public List<User> searchUsers(String keyword) {
         return userRepository.searchUsers(keyword);
+    }
+
+    public void changePassword(String username, String oldPassword, String newPassword) {
+        User user = userRepository.findByUsername(username).orElseThrow();
+        if (oldPassword == null || oldPassword.trim().isEmpty() || newPassword == null || newPassword.trim().isEmpty()) {
+            throw new IllegalArgumentException("Mật khẩu không được để trống.");
+        }
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new IllegalArgumentException("Mật khẩu hiện tại không chính xác.");
+        }
+        if (newPassword.trim().length() < 6) {
+            throw new IllegalArgumentException("Mật khẩu mới phải có ít nhất 6 ký tự.");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword.trim()));
+        userRepository.save(user);
     }
 }
 

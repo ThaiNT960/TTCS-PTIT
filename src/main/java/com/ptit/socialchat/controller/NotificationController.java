@@ -1,6 +1,5 @@
 package com.ptit.socialchat.controller;
 
-import com.ptit.socialchat.entity.Notification;
 import com.ptit.socialchat.entity.User;
 import com.ptit.socialchat.service.NotificationService;
 import com.ptit.socialchat.service.UserService;
@@ -47,7 +46,7 @@ public class NotificationController {
     @PutMapping("/{id}/read")
     public ResponseEntity<?> markAsRead(@PathVariable Long id, Principal principal) {
         if (principal == null) {
-            return ResponseEntity.status(401).body("Unauthorized");
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
         User currentUser = userService.findByUsername(principal.getName()).orElseThrow();
         notificationService.markAsRead(id, currentUser);
@@ -57,7 +56,7 @@ public class NotificationController {
     @PutMapping("/read-all")
     public ResponseEntity<?> markAllAsRead(Principal principal) {
         if (principal == null) {
-            return ResponseEntity.status(401).body("Unauthorized");
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
         User user = userService.findByUsername(principal.getName()).orElseThrow();
         notificationService.markAllAsRead(user);

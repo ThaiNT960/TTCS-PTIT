@@ -23,7 +23,6 @@
         }
     </script>
     <style>
-
         .mode-card {
             transition: all 0.3s ease;
             cursor: pointer;
@@ -50,9 +49,11 @@
         }
 
         .tab-btn.active {
-            color: #ef4444;
+            color: #ef4444 !important;
             border-bottom: 3px solid #ef4444;
             font-weight: 600;
+            background: transparent !important;
+            box-shadow: none !important;
         }
 
         .status-badge {
@@ -139,25 +140,6 @@
         .chart-tab.active {
             background-color: #ef4444;
             color: white;
-        }
-
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
         }
     </style>
 
@@ -511,11 +493,14 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                         <div>
                             <h2 class="font-bold text-gray-900 text-lg">Danh sách người dùng hệ thống</h2>
-                            <p class="text-xs text-gray-400 mt-0.5">Danh sách toàn bộ thành viên và quản trị viên của mạng xã hội</p>
+                            <p class="text-xs text-gray-400 mt-0.5">Danh sách toàn bộ thành viên và quản trị viên của
+                                mạng xã hội</p>
                         </div>
                         <div class="flex items-center gap-3">
                             <div class="relative w-64">
-                                <input type="text" id="userSearchInput" placeholder="Tìm kiếm theo tên hoặc tên tài khoản..." class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-full text-xs focus:outline-none focus:border-primary transition bg-gray-50/50">
+                                <input type="text" id="userSearchInput"
+                                    placeholder="Tìm kiếm theo tên hoặc tên tài khoản..."
+                                    class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-full text-xs focus:outline-none focus:border-primary transition bg-gray-50/50">
                                 <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[10px]">
                                     <i class="fas fa-search"></i>
                                 </div>
@@ -606,7 +591,7 @@
                         <div class="mode-card rounded-2xl p-5 bg-gray-50 flex items-start gap-4 border border-gray-100"
                             onclick="setModerationMode('AUTO_AI')" id="mode-AUTO_AI">
                             <div
-                                <div class="mode-icon w-10 h-10 rounded-xl flex items-center justify-center bg-gray-200 text-gray-500 flex-shrink-0">
+                                class="mode-icon w-10 h-10 rounded-xl flex items-center justify-center bg-gray-200 text-gray-500 flex-shrink-0">
                                 <i class="fas fa-brain text-base"></i>
                             </div>
                             <div>
@@ -623,11 +608,14 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                             <h2 class="font-bold text-gray-900 text-lg">Danh sách bài đăng</h2>
-                            <p class="text-xs text-gray-400 mt-0.5">Theo dõi, kiểm duyệt và điều phối bài đăng trên mạng xã hội</p>
+                            <p class="text-xs text-gray-400 mt-0.5">Theo dõi, kiểm duyệt và điều phối bài đăng trên mạng
+                                xã hội</p>
                         </div>
                         <div class="flex items-center gap-3">
                             <div class="relative w-64">
-                                <input type="text" id="postSearchInput" placeholder="Tìm kiếm theo nội dung hoặc tác giả..." class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-full text-xs focus:outline-none focus:border-primary transition bg-gray-50/50">
+                                <input type="text" id="postSearchInput"
+                                    placeholder="Tìm kiếm theo nội dung hoặc tác giả..."
+                                    class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-full text-xs focus:outline-none focus:border-primary transition bg-gray-50/50">
                                 <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[10px]">
                                     <i class="fas fa-search"></i>
                                 </div>
@@ -677,20 +665,19 @@
                         <table class="w-full text-left">
                             <thead>
                                 <tr class="border-b border-gray-100">
-                                    <th class="text-xs font-bold text-gray-400 pb-4 w-14">STT</th>
-                                    <th class="text-xs font-bold text-gray-400 pb-4 w-40">Tác giả</th>
+                                    <th class="text-xs font-bold text-gray-400 pb-4" style="width: 35px;">STT</th>
+                                    <th class="text-xs font-bold text-gray-400 pb-4 pl-2" style="width: 100px;">Tác giả</th>
                                     <th class="text-xs font-bold text-gray-400 pb-4">Nội dung</th>
-                                    <th class="text-xs font-bold text-gray-400 pb-4 w-32">Tương tác</th>
-                                    <th class="text-xs font-bold text-gray-400 pb-4 w-28">Trạng thái</th>
-                                    <th class="text-xs font-bold text-gray-400 pb-4 w-28">Phân loại AI</th>
-                                    <th class="text-xs font-bold text-gray-400 pb-4 w-36">Thời gian đăng</th>
-                                    <th class="text-xs font-bold text-gray-400 pb-4 text-right w-44">Tác vụ quản trị
-                                    </th>
+                                    <th class="text-xs font-bold text-gray-400 pb-4 text-center" style="width: 110px;">Tương tác</th>
+                                    <th class="text-xs font-bold text-gray-400 pb-4 text-center" style="width: 100px;">Trạng thái</th>
+                                    <th class="text-xs font-bold text-gray-400 pb-4 text-center" style="width: 100px;">Phân loại AI</th>
+                                    <th class="text-xs font-bold text-gray-400 pb-4 text-center" style="width: 140px;">Thời gian đăng</th>
+                                    <th class="text-xs font-bold text-gray-400 pb-4 text-center" style="width: 150px;">Tác vụ quản trị</th>
                                 </tr>
                             </thead>
                             <tbody id="postsTableBody" class="divide-y divide-gray-50 text-sm">
                                 <tr>
-                                    <td colspan="7" class="text-center text-gray-400 py-6">Đang tải danh sách bài
+                                    <td colspan="8" class="text-center text-gray-400 py-6">Đang tải danh sách bài
                                         viết...</td>
                                 </tr>
                             </tbody>
@@ -707,11 +694,14 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                         <div>
                             <h2 class="font-bold text-gray-900 text-lg">Quản lý Thông báo Hệ thống</h2>
-                            <p class="text-xs text-gray-400 mt-0.5">Soạn thảo và đăng tải các thông báo quan trọng đến bảng tin người dùng</p>
+                            <p class="text-xs text-gray-400 mt-0.5">Soạn thảo và đăng tải các thông báo quan trọng đến
+                                bảng tin người dùng</p>
                         </div>
                         <div class="flex items-center gap-3">
                             <div class="relative w-64">
-                                <input type="text" id="announcementSearchInput" placeholder="Tìm kiếm theo tiêu đề hoặc nội dung..." class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-full text-xs focus:outline-none focus:border-primary transition bg-gray-50/50">
+                                <input type="text" id="announcementSearchInput"
+                                    placeholder="Tìm kiếm theo tiêu đề hoặc nội dung..."
+                                    class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-full text-xs focus:outline-none focus:border-primary transition bg-gray-50/50">
                                 <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[10px]">
                                     <i class="fas fa-search"></i>
                                 </div>
@@ -738,7 +728,8 @@
                             </thead>
                             <tbody id="announcementsTableBody" class="divide-y divide-gray-50 text-sm">
                                 <tr>
-                                    <td colspan="6" class="text-center text-gray-400 py-6">Đang tải danh sách thông báo...</td>
+                                    <td colspan="6" class="text-center text-gray-400 py-6">Đang tải danh sách thông
+                                        báo...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -766,8 +757,8 @@
             </div>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1.5">Tên tài khoản (Username)</label>
-                    <input type="text" id="newUsername" placeholder="Tên tài khoản để đăng nhập..."
+                    <label class="block text-xs font-semibold text-gray-500 mb-1.5">Email</label>
+                    <input type="email" id="newEmail" placeholder="Nhập địa chỉ email..."
                         class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-primary transition">
                 </div>
                 <div>
@@ -777,8 +768,14 @@
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-500 mb-1.5">Mật khẩu</label>
-                    <input type="password" id="newPassword" placeholder="Nhập mật khẩu tài khoản..."
-                        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-primary transition">
+                    <div class="relative">
+                        <input type="password" id="newPassword" placeholder="Nhập mật khẩu tài khoản..."
+                            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-primary transition pr-10">
+                        <button type="button" onclick="togglePasswordVisibility('newPassword')"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none">
+                            <i class="far fa-eye-slash" id="toggle-icon-newPassword"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="flex gap-3 mt-6">

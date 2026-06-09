@@ -3,11 +3,6 @@ var API_URL = window.location.origin + '/api';
 document.addEventListener('DOMContentLoaded', () => {
     const user = checkAuth();
 
-    // Set navbar avatar initial
-    const navAvatar = document.getElementById('navAvatar');
-    if (navAvatar && user.fullName) navAvatar.textContent = user.fullName.charAt(0).toUpperCase();
-    if (user.avatar) navAvatar.innerHTML = `<img src="${user.avatar}" class="w-full h-full object-cover" onerror="this.parentElement.textContent='${user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}'">`;
-
     loadPosts(user);
     setupPostForm(user);
     loadAnnouncements();
@@ -19,10 +14,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelBtn = document.getElementById('cancelPostImagePreview');
 
     if (postImageFile) {
-        postImageFile.addEventListener('change', function() {
+        postImageFile.addEventListener('change', function () {
             if (this.files && this.files[0]) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = function (e) {
                     previewImg.src = e.target.result;
                     previewContainer.classList.remove('hidden');
                 }
@@ -30,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         if (cancelBtn) {
-            cancelBtn.addEventListener('click', function() {
+            cancelBtn.addEventListener('click', function () {
                 postImageFile.value = '';
                 previewImg.src = '';
                 previewContainer.classList.add('hidden');
@@ -44,25 +39,25 @@ let currentUserObj = null;
 function escapeHtml(unsafe) {
     if (!unsafe) return "";
     return String(unsafe)
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;")
-         .replace(/"/g, "&quot;")
-         .replace(/'/g, "&#039;");
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 const TAG_COLORS = {
     '#just-for-fun': 'text-blue-600 bg-blue-50 inline-block px-1.5 py-0.5 rounded-full',
-    '#quan-trọng':   'text-red-500 bg-red-50 inline-block px-1.5 py-0.5 rounded-full',
-    '#hỏi-đáp':      'text-green-600 bg-green-50 inline-block px-1.5 py-0.5 rounded-full',
-    '#chia-sẻ':      'text-purple-600 bg-purple-50 inline-block px-1.5 py-0.5 rounded-full',
-    '#học-tập':      'text-yellow-700 bg-yellow-50 inline-block px-1.5 py-0.5 rounded-full'
+    '#quan-trọng': 'text-red-500 bg-red-50 inline-block px-1.5 py-0.5 rounded-full',
+    '#hỏi-đáp': 'text-green-600 bg-green-50 inline-block px-1.5 py-0.5 rounded-full',
+    '#chia-sẻ': 'text-purple-600 bg-purple-50 inline-block px-1.5 py-0.5 rounded-full',
+    '#học-tập': 'text-yellow-700 bg-yellow-50 inline-block px-1.5 py-0.5 rounded-full'
 };
 
 function renderContent(content) {
     if (!content) return '';
     var escaped = escapeHtml(content);
-    escaped = escaped.replace(/(#[\w\u00C0-\u024F\u1E00-\u1EFF-]+)/g, function(match) {
+    escaped = escaped.replace(/(#[\w\u00C0-\u024F\u1E00-\u1EFF-]+)/g, function (match) {
         var lower = match.toLowerCase();
         var colorClass = TAG_COLORS[lower] || 'text-gray-600 bg-gray-100 inline-block px-1.5 py-0.5 rounded-full';
         return '<span class="' + colorClass + '">' + match + '</span>';
@@ -129,12 +124,11 @@ async function loadPosts(user, searchQuery = '', append = false) {
         if (!append) currentPage = 0;
         let url = `${API_URL}/posts?page=${currentPage}&size=10`;
         if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
-        
-        const res = await fetch(url);
-        const data = await res.json();
+
+        const data = await apiGet(url);
         const posts = data.content || [];
         const feed = document.getElementById('postsFeed');
-        
+
         if (!append) {
             feed.innerHTML = '';
             allPostsData = posts || [];
@@ -162,7 +156,7 @@ async function loadPosts(user, searchQuery = '', append = false) {
             };
             feed.appendChild(btn);
         }
-        
+
         if (!append) extractTopics(allPostsData);
     } catch (e) {
         console.error(e);
@@ -175,15 +169,15 @@ function renderPost(post, user, container) {
     const isAdmin = user.role === 'ROLE_ADMIN';
     const liked = post.liked;
     const commentCount = (post.comments || []).length;
-    
+
     // Logic Reaction từ PTIT
     const currentReaction = post.currentReaction;
     let totalReactionCount = post.likeCount || 0;
-    const reactionIconMap = { 
-        'LIKE': '<i class="fas fa-thumbs-up"></i> Thích', 
-        'HAHA': '<i class="far fa-laugh-squint"></i> Haha', 
-        'SAD': '<i class="far fa-sad-tear"></i> Buồn', 
-        'ANGRY': '<i class="far fa-angry"></i> Phẫn nộ' 
+    const reactionIconMap = {
+        'LIKE': '<i class="fas fa-thumbs-up"></i> Thích',
+        'HAHA': '<i class="far fa-laugh-squint"></i> Haha',
+        'SAD': '<i class="far fa-sad-tear"></i> Buồn',
+        'ANGRY': '<i class="far fa-angry"></i> Phẫn nộ'
     };
     let currentReactHtml = '<i class="far fa-heart"></i> Thích';
     let currentBtnClass = 'text-gray-500';
@@ -210,6 +204,22 @@ function renderPost(post, user, container) {
         }
     }
 
+    // Tính toán rút gọn nội dung nếu vượt quá 330 ký tự
+    const maxLen = 330;
+    let contentHtml = '';
+    if (post.content && post.content.length > maxLen) {
+        const shortContent = post.content.substring(0, maxLen);
+        contentHtml = `
+            <div id="post-content-wrap-${post.id}">
+                <p class="text-gray-800 text-sm leading-relaxed mb-3 post-short-content" style="white-space: pre-wrap;">${renderContent(shortContent)}...</p>
+                <p class="text-gray-800 text-sm leading-relaxed mb-3 post-full-content hidden" style="white-space: pre-wrap;">${renderContent(post.content)}</p>
+                <button onclick="togglePostContent(${post.id})" class="text-primary text-xs font-semibold hover:underline mt-[-8px] mb-3 block focus:outline-none">Xem thêm</button>
+            </div>
+        `;
+    } else {
+        contentHtml = `<p class="text-gray-800 text-sm leading-relaxed mb-3" style="white-space: pre-wrap;">${renderContent(post.content)}</p>`;
+    }
+
     const postContentHtml = `
         <div class="p-5 pb-0">
             <div class="flex items-center gap-3 mb-3">
@@ -225,7 +235,7 @@ function renderPost(post, user, container) {
                     <i class="fas fa-trash"></i>
                 </button>` : ''}
             </div>
-            <p class="text-gray-800 text-sm leading-relaxed mb-3" style="white-space: pre-wrap;">${renderContent(post.content)}</p>
+            ${contentHtml}
             ${post.imageUrl ? `
             <a href="${post.imageUrl}" target="_blank" class="block mb-3 hover:opacity-95 transition" title="Bấm để xem ảnh gốc">
                 <img src="${post.imageUrl}" alt="Post image" class="w-full rounded-xl max-h-96 object-cover" onerror="this.style.display='none'">
@@ -293,17 +303,9 @@ function toggleComments(postId) {
 }
 
 async function reactToPost(postId, reactionType) {
-    const user = checkAuth();
     try {
-        const res = await fetch(`${API_URL}/posts/${postId}/like`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reactionType: reactionType })
-        });
-        const data = await res.json();
-        if (data.success || data.liked !== undefined) {
-            await refreshSinglePost(postId);
-        }
+        await apiPost(`${API_URL}/posts/${postId}/like`, { reactionType: reactionType });
+        await refreshSinglePost(postId);
     } catch (e) { console.error(e); }
 }
 
@@ -313,24 +315,23 @@ async function showReactionList(postId) {
     body.innerHTML = '<p class="text-center text-gray-400 text-sm">Đang tải...</p>';
     document.getElementById('usersModal').classList.remove('hidden');
     try {
-        const res = await fetch(`${API_URL}/posts/${postId}/reactions`);
-        const users = await res.json();
-        if(!users || users.length === 0) {
+        const users = await apiGet(`${API_URL}/posts/${postId}/reactions`);
+        if (!users || users.length === 0) {
             body.innerHTML = '<p class="text-center text-gray-400 text-sm">Chưa có ai bày tỏ cảm xúc</p>';
             return;
         }
-        const iconMap = { 
-            'LIKE': '<i class="fas fa-thumbs-up text-blue-500"></i>', 
-            'HAHA': '<i class="fas fa-laugh-squint text-yellow-500"></i>', 
-            'SAD': '<i class="fas fa-sad-tear text-yellow-500"></i>', 
-            'ANGRY': '<i class="fas fa-angry text-red-500"></i>' 
+        const iconMap = {
+            'LIKE': '<i class="fas fa-thumbs-up text-blue-500"></i>',
+            'HAHA': '<i class="fas fa-laugh-squint text-yellow-500"></i>',
+            'SAD': '<i class="fas fa-sad-tear text-yellow-500"></i>',
+            'ANGRY': '<i class="fas fa-angry text-red-500"></i>'
         };
         body.innerHTML = users.map(u => `
             <div class="flex items-center justify-between mb-3">
                 <a href="profile.html?username=${u.username}" class="flex items-center gap-3 no-underline hover:opacity-80">
                     <div class="w-10 h-10 relative flex-shrink-0">
                         <div class="w-full h-full rounded-full bg-primary text-white flex items-center justify-center font-bold overflow-hidden">
-                            ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : (u.fullName||u.username).charAt(0).toUpperCase()}
+                            ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : (u.fullName || u.username).charAt(0).toUpperCase()}
                         </div>
                         <div class="absolute -bottom-1 -right-1 bg-white rounded-full w-5 h-5 flex items-center justify-center shadow-sm" style="font-size: 10px;">
                             ${iconMap[u.reactionType] || iconMap['LIKE']}
@@ -344,42 +345,31 @@ async function showReactionList(postId) {
 
 async function deletePost(postId) {
     if (!confirm('Xóa bài viết này?')) return;
-    const user = checkAuth();
     try {
-        await fetch(`${API_URL}/posts/${postId}`, { method: 'DELETE' });
+        await apiDelete(`${API_URL}/posts/${postId}`);
         const el = document.getElementById(`post-${postId}`);
         if (el) el.remove();
     } catch (e) { console.error(e); }
 }
 
-window.deleteComment = async function(commentId, postId) {
+window.deleteComment = async function (commentId, postId) {
     if (!confirm('Bạn có chắc chắn muốn xóa bình luận này?')) return;
     try {
-        const res = await fetch(`${API_URL}/posts/comments/${commentId}`, { method: 'DELETE' });
-        if (res.ok) {
-            await refreshSinglePost(postId);
-        } else {
-            const err = await res.json();
-            alert(err.error || 'Lỗi khi xóa bình luận');
-        }
+        await apiDelete(`${API_URL}/posts/comments/${commentId}`);
+        await refreshSinglePost(postId);
     } catch (e) {
         console.error(e);
-        alert('Lỗi kết nối khi xóa bình luận');
+        alert(e.message || 'Lỗi kết nối khi xóa bình luận');
     }
 };
 
 async function submitComment(postId) {
-    const user = checkAuth();
     const input = document.getElementById(`comment-input-${postId}`);
     const content = input.value.trim();
     const parentId = input.dataset.parentId || null;
     if (!content) return;
     try {
-        await fetch(`${API_URL}/posts/${postId}/comments`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content, parentId })
-        });
+        await apiPost(`${API_URL}/posts/${postId}/comments`, { content, parentId });
         input.value = '';
         delete input.dataset.parentId;
         input.placeholder = 'Viết bình luận...';
@@ -387,7 +377,7 @@ async function submitComment(postId) {
     } catch (e) { console.error(e); }
 }
 
-window.renderCommentsHtml = function(postId, comments, currentUserUsername, postOwnerUsername, isSystemAdmin) {
+window.renderCommentsHtml = function (postId, comments, currentUserUsername, postOwnerUsername, isSystemAdmin) {
     if (!comments || comments.length === 0) return '';
     const topLevel = comments.filter(c => !c.parentCommentId);
     const repliesMap = {};
@@ -408,7 +398,7 @@ window.renderCommentsHtml = function(postId, comments, currentUserUsername, post
         const isCommentAuthor = c.username === currentUserUsername;
         const isPostOwner = postOwnerUsername === currentUserUsername;
         const canDelete = isCommentAuthor || isPostOwner || isSystemAdmin;
-        
+
         const deleteBtnHtml = canDelete ? `
             <button onclick="deleteComment(${c.id}, ${postId})" class="text-gray-400 hover:text-red-500 transition text-[10px] ml-1 font-semibold">Xóa</button>
         ` : '';
@@ -440,9 +430,9 @@ window.renderCommentsHtml = function(postId, comments, currentUserUsername, post
     return topLevel.map(c => renderSingleComment(c)).join('');
 };
 
-window.setReply = function(postId, commentId, name) {
+window.setReply = function (postId, commentId, name) {
     const input = document.getElementById(`comment-input-${postId}`);
-    if(input) {
+    if (input) {
         input.dataset.parentId = commentId;
         input.placeholder = `Trả lời ${name}...`;
         input.focus();
@@ -452,11 +442,7 @@ window.setReply = function(postId, commentId, name) {
 async function reactToComment(commentId, postId) {
     const user = checkAuth();
     try {
-        await fetch(`${API_URL}/posts/comments/${commentId}/reaction`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
-        });
+        await apiPost(`${API_URL}/posts/comments/${commentId}/reaction`, {});
         if (postId) {
             await refreshSinglePost(postId);
         } else {
@@ -468,16 +454,13 @@ async function reactToComment(commentId, postId) {
 async function refreshSinglePost(postId) {
     if (!currentUserObj) return;
     try {
-        const res = await fetch(`${API_URL}/posts/${postId}`);
-        if (res.ok) {
-            const post = await res.json();
-            const idx = allPostsData.findIndex(p => p.id === postId);
-            if (idx !== -1) {
-                allPostsData[idx] = post;
-            }
-            const feed = document.getElementById('postsFeed');
-            renderPost(post, currentUserObj, feed);
+        const post = await apiGet(`${API_URL}/posts/${postId}`);
+        const idx = allPostsData.findIndex(p => p.id === postId);
+        if (idx !== -1) {
+            allPostsData[idx] = post;
         }
+        const feed = document.getElementById('postsFeed');
+        renderPost(post, currentUserObj, feed);
     } catch (e) {
         console.error("Error refreshing post: ", e);
     }
@@ -498,7 +481,7 @@ function showModerationNotice(type, message) {
         + '<button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-gray-600 text-sm"><i class="fas fa-times"></i></button>';
 
     feed.insertBefore(notice, feed.firstChild);
-    setTimeout(function() { if (notice.parentNode) notice.remove(); }, 8000);
+    setTimeout(function () { if (notice.parentNode) notice.remove(); }, 8000);
 }
 
 function setupPostForm(user) {
@@ -510,47 +493,37 @@ function setupPostForm(user) {
         const content = document.getElementById('postContent').value.trim();
         const imageFile = document.getElementById('postImageFile') ? document.getElementById('postImageFile').files[0] : null;
         if (!content && !imageFile) return;
-        
+
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.textContent = 'Đang đăng...';
         }
-        
+
         let imageUrl = null;
         if (imageFile) {
             const formData = new FormData();
             formData.append('imageFile', imageFile);
             try {
-                const uploadRes = await fetch(`${API_URL}/upload/post-image`, { method: 'POST', body: formData });
-                if (uploadRes.ok) {
-                    const uploadData = await uploadRes.json();
-                    if (uploadData.status === 'ok') imageUrl = uploadData.imageUrl;
-                }
+                const uploadData = await apiPost(`${API_URL}/upload/post-image`, formData);
+                if (uploadData.status === 'ok') imageUrl = uploadData.imageUrl;
             } catch (err) { console.error('Lỗi upload', err); }
         }
 
         try {
-            const res = await fetch(`${API_URL}/posts`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content, imageUrl: imageUrl })
-            });
-            if (res.ok) {
-                const result = await res.json();
-                document.getElementById('postContent').value = '';
-                if (document.getElementById('postImageFile')) {
-                    document.getElementById('postImageFile').value = '';
-                    document.getElementById('createPostImagePreview').src = '';
-                    document.getElementById('createPostImagePreviewContainer').classList.add('hidden');
-                }
-                
-                if (result.status === 'PENDING') {
-                    showModerationNotice('pending', result.message || 'Bài viết đang chờ kiểm duyệt.');
-                } else if (result.status === 'REJECTED') {
-                    showModerationNotice('rejected', result.message || 'Bài viết bị từ chối do nội dung không phù hợp.');
-                } else {
-                    loadPosts(user);
-                }
+            const result = await apiPost(`${API_URL}/posts`, { content, imageUrl: imageUrl });
+            document.getElementById('postContent').value = '';
+            if (document.getElementById('postImageFile')) {
+                document.getElementById('postImageFile').value = '';
+                document.getElementById('createPostImagePreview').src = '';
+                document.getElementById('createPostImagePreviewContainer').classList.add('hidden');
+            }
+
+            if (result.status === 'PENDING') {
+                showModerationNotice('pending', result.message || 'Bài viết đang chờ kiểm duyệt.');
+            } else if (result.status === 'REJECTED') {
+                showModerationNotice('rejected', result.message || 'Bài viết bị từ chối do nội dung không phù hợp.');
+            } else {
+                loadPosts(user);
             }
         } catch (e) {
             console.error(e);
@@ -568,9 +541,8 @@ async function loadAnnouncements() {
     const box = document.getElementById('announcementsBox');
     if (!box) return;
     try {
-        const res = await fetch(`${API_URL}/announcements`);
-        const data = await res.json();
-        
+        const data = await apiGet(`${API_URL}/announcements`);
+
         if (!data || !data.length) {
             box.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">Chưa có thông báo nào.</p>';
             return;
@@ -639,3 +611,21 @@ function extractTopics(posts) {
         box.appendChild(btn);
     });
 }
+
+window.togglePostContent = function (postId) {
+    const wrap = document.getElementById(`post-content-wrap-${postId}`);
+    if (!wrap) return;
+    const shortEl = wrap.querySelector('.post-short-content');
+    const fullEl = wrap.querySelector('.post-full-content');
+    const btn = wrap.querySelector('button');
+
+    if (fullEl.classList.contains('hidden')) {
+        fullEl.classList.remove('hidden');
+        shortEl.classList.add('hidden');
+        btn.textContent = 'Thu gọn';
+    } else {
+        fullEl.classList.add('hidden');
+        shortEl.classList.remove('hidden');
+        btn.textContent = 'Xem thêm';
+    }
+};

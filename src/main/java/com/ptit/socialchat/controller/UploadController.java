@@ -31,15 +31,22 @@ public class UploadController {
     }
 
     /**
-     * Upload ảnh cho tin nhắn chat.
+     * Upload file cho tin nhắn chat (ảnh, tài liệu).
      * POST /api/upload/chat-image
      * Body: multipart/form-data với field "imageFile"
-     * Trả về: { "status": "ok", "imageUrl": "/uploads/chats/uuid-filename.jpg" }
      */
     @PostMapping("/chat-image")
     public ResponseEntity<?> uploadChatImage(@RequestParam("imageFile") MultipartFile imageFile) throws Exception {
-        String imageUrl = fileUploadService.saveFile(imageFile, "chats");
-        return ResponseEntity.ok(Map.of("status", "ok", "imageUrl", imageUrl));
+        String allowedPatterns = "^(jpg|jpeg|png|gif|webp|pdf|xls|xlsx|ppt|pptx|doc|docx|txt|zip|rar)$";
+        String fileUrl = fileUploadService.saveFile(imageFile, "chats", allowedPatterns);
+        String originalName = imageFile.getOriginalFilename();
+        if (originalName == null) originalName = "unknown_file";
+        return ResponseEntity.ok(Map.of(
+            "status", "ok", 
+            "imageUrl", fileUrl,
+            "fileUrl", fileUrl,
+            "fileName", originalName
+        ));
     }
 
     @PostMapping("/avatar")

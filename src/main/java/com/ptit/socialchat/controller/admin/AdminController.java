@@ -22,6 +22,8 @@ import com.ptit.socialchat.service.ModerationService;
 import com.ptit.socialchat.entity.Post;
 import com.ptit.socialchat.entity.Comment;
 import com.ptit.socialchat.entity.Message;
+import com.ptit.socialchat.service.AnnouncementService;
+import java.security.Principal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @RestController
@@ -32,6 +34,9 @@ public class AdminController {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private AnnouncementService announcementService;
 
     @GetMapping("/users")
     public List<User> getAllUsers(@RequestParam(required = false) String search) {
@@ -44,8 +49,11 @@ public class AdminController {
     @DeleteMapping("/users/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable Long id) {
         User user = userService.findById(id).orElse(null);
-        if (user != null && "ROLE_ADMIN".equals(user.getRole())) {
-            return ResponseEntity.badRequest().body("Không thể xóa tài khoản Quản trị viên.");
+        if (user == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "Người dùng không tồn tại hoặc đã bị xóa trước đó."));
+        }
+        if ("ROLE_ADMIN".equals(user.getRole())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Không thể xóa tài khoản Quản trị viên."));
         }
         userService.deleteUserCompletely(id);
         return ResponseEntity.ok("User deleted");
@@ -53,14 +61,47 @@ public class AdminController {
 
     @PostMapping("/users")
     public ResponseEntity<?> createUser(@RequestBody Map<String, String> request) {
-        User user = new User();
-        user.setUsername(request.get("username"));
-        user.setFullName(request.get("fullName"));
-        
+        String email = request.get("email");
+        String fullName = request.get("fullName");
         String password = request.get("password");
-        if (password != null && !password.isEmpty()) {
-            user.setPassword(passwordEncoder.encode(password));
+        
+        if (email == null || email.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email không được để trống."));
         }
+        if (!email.trim().endsWith("@student.ptit.edu.vn")) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng sử dụng email sinh viên hợp lệ (@student.ptit.edu.vn)."));
+        }
+        if (fullName == null || fullName.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Họ và tên không được để trống."));
+        }
+        if (password == null || password.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Mật khẩu không được để trống."));
+        }
+        
+        email = email.trim();
+        if (userService.findByEmail(email).isPresent()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email này đã được sử dụng bởi người dùng khác."));
+        }
+        
+        // Tự động phát sinh username từ email (đồng bộ với AuthController.register)
+        String prefix = email.split("@")[0];
+        String baseUsername = prefix.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+        if (baseUsername.isEmpty()) {
+            baseUsername = "user";
+        }
+        
+        String generatedUsername = baseUsername;
+        int suffix = 1;
+        while (userService.findByUsername(generatedUsername).isPresent()) {
+            generatedUsername = baseUsername + suffix;
+            suffix++;
+        }
+        
+        User user = new User();
+        user.setUsername(generatedUsername);
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setFullName(fullName.trim());
         
         String role = request.get("role");
         user.setRole(role != null ? role : "ROLE_USER");
@@ -227,7 +268,7 @@ public class AdminController {
     public ResponseEntity<?> toggleLockUser(@PathVariable Long id) {
         User user = userService.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found"));
         if ("ROLE_ADMIN".equals(user.getRole())) {
-            return ResponseEntity.badRequest().body("Không thể khóa hoặc mở khóa tài khoản Quản trị viên.");
+            return ResponseEntity.badRequest().body(Map.of("error", "Không thể khóa hoặc mở khóa tài khoản Quản trị viên."));
         }
         user.setLocked(!user.isLocked());
         userService.save(user);
@@ -306,6 +347,26 @@ public class AdminController {
         }
         postRepository.saveAll(pendingPosts);
         return ResponseEntity.ok(Map.of("status", "ok", "count", count));
+    }
+
+    @PostMapping("/announcements")
+    public ResponseEntity<?> createAnnouncement(
+            Principal principal,
+            @RequestBody Map<String, String> request) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+        String title = request.get("title");
+        String content = request.get("content");
+        
+        announcementService.save(title, content, principal.getName());
+        return ResponseEntity.ok(Map.of("status", "ok"));
+    }
+
+    @DeleteMapping("/announcements/{id}")
+    public ResponseEntity<?> deleteAnnouncement(@PathVariable Long id) {
+        announcementService.deleteById(id);
+        return ResponseEntity.ok(Map.of("status", "ok"));
     }
 }
 

@@ -28,7 +28,7 @@ public class FriendController {
     @PostMapping("/request")
     public ResponseEntity<?> sendFriendRequest(@RequestBody Map<String, String> request, Principal principal) {
         if (principal == null) {
-            return ResponseEntity.status(401).body("Unauthorized");
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
         String receiverUsername = request.get("receiverUsername");
         User sender = userService.findByUsername(principal.getName()).orElseThrow();
@@ -38,14 +38,22 @@ public class FriendController {
     }
 
     @PostMapping("/accept/{requestId}")
-    public ResponseEntity<?> acceptFriendRequest(@PathVariable Long requestId) {
-        friendService.acceptRequest(requestId);
+    public ResponseEntity<?> acceptFriendRequest(@PathVariable Long requestId, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+        User currentUser = userService.findByUsername(principal.getName()).orElseThrow();
+        friendService.acceptRequest(requestId, currentUser);
         return ResponseEntity.ok("Friend request accepted");
     }
 
     @PostMapping("/reject/{requestId}")
-    public ResponseEntity<?> rejectFriendRequest(@PathVariable Long requestId) {
-        friendService.rejectRequest(requestId);
+    public ResponseEntity<?> rejectFriendRequest(@PathVariable Long requestId, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+        User currentUser = userService.findByUsername(principal.getName()).orElseThrow();
+        friendService.rejectRequest(requestId, currentUser);
         return ResponseEntity.ok("Friend request rejected");
     }
 
@@ -81,7 +89,7 @@ public class FriendController {
     @DeleteMapping("/unfriend/{targetUsername}")
     public ResponseEntity<?> unfriend(@PathVariable String targetUsername, Principal principal) {
         if (principal == null) {
-            return ResponseEntity.status(401).body("Unauthorized");
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
         User current = userService.findByUsername(principal.getName()).orElseThrow();
         User target = userService.findByUsername(targetUsername).orElseThrow();

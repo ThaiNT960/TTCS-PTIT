@@ -13,10 +13,8 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -38,7 +36,7 @@ public class AuthController {
         }
         if (userOpt.isPresent() && passwordEncoder.matches(request.getPassword(), userOpt.get().getPassword())) {
             if (userOpt.get().isLocked()) {
-                return ResponseEntity.status(403).body("Tài khoản của bạn đã bị khóa.");
+                return ResponseEntity.status(403).body(Map.of("error", "Tài khoản của bạn đã bị khóa."));
             }
             // Sinh JWT Token
             String token = jwtTokenProvider.generateToken(userOpt.get().getUsername(), userOpt.get().getRole());
@@ -59,7 +57,7 @@ public class AuthController {
             resBody.put("avatar", userOpt.get().getAvatar());
             return ResponseEntity.ok(resBody);
         }
-        return ResponseEntity.status(401).body("Invalid credentials");
+        return ResponseEntity.status(401).body(Map.of("error", "Email hoặc mật khẩu không chính xác."));
     }
 
     @PostMapping("/logout")
@@ -77,21 +75,23 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterUserRequest request) {
         if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("Email không được để trống");
+            return ResponseEntity.badRequest().body(Map.of("error", "Email không được để trống"));
+        }
+        if (!request.getEmail().trim().endsWith("@student.ptit.edu.vn")) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng sử dụng email sinh viên hợp lệ (@student.ptit.edu.vn)."));
         }
         if (userService.findByEmail(request.getEmail()).isPresent()) {
-            return ResponseEntity.badRequest().body("Email này đã được sử dụng.");
+            return ResponseEntity.badRequest().body(Map.of("error", "Email này đã được sử dụng."));
         }
         if (request.getStudentId() != null && !request.getStudentId().trim().isEmpty()) {
             if (userService.findByStudentId(request.getStudentId().trim()).isPresent()) {
-                return ResponseEntity.badRequest().body("Mã sinh viên này đã được đăng ký.");
+                return ResponseEntity.badRequest().body(Map.of("error", "Mã sinh viên này đã được đăng ký."));
             }
         }
         
         String email = request.getEmail().trim();
         String prefix = email.split("@")[0];
-        String[] parts = prefix.split("[\\._-]");
-        String baseUsername = parts[parts.length - 1].replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+        String baseUsername = prefix.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
         if (baseUsername.isEmpty()) {
             baseUsername = "user";
         }
@@ -115,20 +115,7 @@ public class AuthController {
         return ResponseEntity.ok("User registered successfully");
     }
 
-    // Tìm kiếm user theo keyword (username hoặc fullName)
-    @GetMapping("/users/search")
-    public List<Map<String, Object>> searchUsers(@RequestParam String keyword) {
-        return userService.searchUsers(keyword).stream()
-                .map(u -> {
-                    Map<String, Object> map = new HashMap<>();
-                    map.put("id", u.getId());
-                    map.put("username", u.getUsername());
-                    map.put("fullName", u.getFullName());
-                    map.put("avatar", u.getAvatar());
-                    return map;
-                })
-                .collect(Collectors.toList());
-    }
+
 }
 
 

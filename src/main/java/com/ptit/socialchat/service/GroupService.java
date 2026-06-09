@@ -20,51 +20,12 @@ public class GroupService {
     private ConversationMemberRepository conversationMemberRepository;
 
     @Autowired
-    private UserService userService;
-
-    @Autowired
     private MessageRepository messageRepository;
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
-    @Transactional
-    public Conversation createCommunityGroup(String name, String description, String category, String privacy,
-            List<String> usernames, User creator) {
-        Conversation conv = new Conversation();
-        conv.setName(name);
-        conv.setDescription(description);
-        conv.setCategory(category);
-        conv.setPrivacy(privacy);
-        conv.setGroupChat(true);
-        conv = conversationRepository.save(conv);
 
-        // Add creator as ADMIN
-        ConversationMember admin = new ConversationMember();
-        admin.setConversation(conv);
-        admin.setUser(creator);
-        admin.setRole("ADMIN");
-        admin.setJoinedAt(LocalDateTime.now());
-        conversationMemberRepository.save(admin);
-
-        // Add initial members as MEMBER
-        if (usernames != null) {
-            for (String username : usernames) {
-                if (username.equals(creator.getUsername()))
-                    continue;
-                User user = userService.findByUsername(username).orElse(null);
-                if (user != null) {
-                    ConversationMember member = new ConversationMember();
-                    member.setConversation(conv);
-                    member.setUser(user);
-                    member.setRole("MEMBER");
-                    member.setJoinedAt(LocalDateTime.now());
-                    conversationMemberRepository.save(member);
-                }
-            }
-        }
-        return conv;
-    }
 
     public List<Conversation> searchPublicCommunities(String category, String name) {
         return conversationRepository.searchPublicCommunities(category, name);
@@ -81,7 +42,11 @@ public class GroupService {
 
         // Only ADMIN can change roles
         if (!"ADMIN".equals(actorMember.getRole())) {
-            throw new IllegalArgumentException("Chỉ Trưởng nhóm mới có quyền thay đổi vai trò");
+            throw new org.springframework.security.access.AccessDeniedException("Chỉ trưởng nhóm mới có quyền thay đổi vai trò của thành viên.");
+        }
+
+        if ("ADMIN".equals(newRole)) {
+            throw new IllegalArgumentException("Không thể thiết lập vai trò Trưởng nhóm trực tiếp");
         }
 
         targetMember.setRole(newRole);
@@ -100,11 +65,11 @@ public class GroupService {
                 .orElseThrow(() -> new IllegalArgumentException("Bạn không thuộc nhóm này"));
 
         if ("MEMBER".equals(actorMember.getRole())) {
-            throw new IllegalArgumentException("Thành viên thường không có quyền xóa người khác");
+            throw new org.springframework.security.access.AccessDeniedException("Thành viên thường không có quyền xóa người khác khỏi nhóm.");
         }
 
         if ("CO_ADMIN".equals(actorMember.getRole()) && !"MEMBER".equals(targetMember.getRole())) {
-            throw new IllegalArgumentException("Phó nhóm chỉ có thể xóa thành viên thường");
+            throw new org.springframework.security.access.AccessDeniedException("Phó nhóm chỉ có quyền xóa thành viên thường khỏi nhóm.");
         }
 
         conversationMemberRepository.delete(targetMember);

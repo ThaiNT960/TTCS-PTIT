@@ -26,6 +26,10 @@ public class FileUploadService {
      * @return URL tương đối để truy cập file (ví dụ: "/uploads/posts/uuid-filename.jpg")
      */
     public String saveFile(MultipartFile file, String subDirectory) throws IOException {
+        return saveFile(file, subDirectory, "^(jpg|jpeg|png|gif|webp)$");
+    }
+
+    public String saveFile(MultipartFile file, String subDirectory, String allowedPattern) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File không được để trống.");
         }
@@ -39,8 +43,8 @@ public class FileUploadService {
         if (dotIndex > 0) {
             ext = originalFilename.substring(dotIndex + 1).toLowerCase();
         }
-        if (!ext.matches("^(jpg|jpeg|png|gif|webp)$")) {
-            throw new IllegalArgumentException("Định dạng file không hợp lệ. Chỉ chấp nhận: jpg, jpeg, png, gif, webp.");
+        if (!ext.matches(allowedPattern)) {
+            throw new IllegalArgumentException("Định dạng file không hợp lệ hoặc không được hỗ trợ cho tác vụ này.");
         }
 
         // Tạo tên file duy nhất

@@ -195,10 +195,16 @@ public class PostService {
 
     public Comment addComment(Long postId, String content, User user, Long parentId) {
         Post post = postRepository.findById(postId).orElseThrow();
+        if ((!"APPROVED".equals(post.getStatus()) || post.getUser().isLocked()) && !"ROLE_ADMIN".equals(user.getRole())) {
+            throw new IllegalArgumentException("Bài viết này không khả dụng để tương tác.");
+        }
         Comment comment = new Comment();
         comment.setContent(content);
         if (parentId != null) {
             Comment parentComment = commentRepository.findById(parentId).orElseThrow();
+            if (!parentComment.getPost().getId().equals(postId)) {
+                throw new IllegalArgumentException("Bình luận cha không thuộc bài viết này.");
+            }
             if (parentComment.getParentCommentId() != null) {
                 comment.setParentCommentId(parentComment.getParentCommentId());
             } else {
@@ -223,7 +229,7 @@ public class PostService {
         boolean isSystemAdmin = "ROLE_ADMIN".equals(user.getRole());
         
         if (!isPostOwner && !isCommentAuthor && !isSystemAdmin) {
-            throw new IllegalArgumentException("Bạn không có quyền xóa bình luận này");
+            throw new org.springframework.security.access.AccessDeniedException("Bạn không có quyền xóa bình luận này.");
         }
         
         // Nếu là bình luận gốc, xóa tất cả bình luận con của nó
@@ -238,6 +244,9 @@ public class PostService {
     @Transactional
     public boolean reactToPost(Long postId, User user, String reactionType) {
         Post post = postRepository.findById(postId).orElseThrow();
+        if ((!"APPROVED".equals(post.getStatus()) || post.getUser().isLocked()) && !"ROLE_ADMIN".equals(user.getRole())) {
+            throw new IllegalArgumentException("Bài viết này không khả dụng để tương tác.");
+        }
         Optional<PostLike> existing = postLikeRepository.findByPostAndUser(post, user);
         
         boolean isNewReaction = false;
@@ -323,7 +332,7 @@ public class PostService {
     public void deletePost(Long postId, User user) {
         Post post = postRepository.findById(postId).orElseThrow();
         if (!post.getUser().getId().equals(user.getId()) && !"ROLE_ADMIN".equals(user.getRole())) {
-            throw new RuntimeException("Bạn không có quyền xóa bài viết này");
+            throw new org.springframework.security.access.AccessDeniedException("Bạn không có quyền xóa bài viết này.");
         }
         postRepository.delete(post);
     }
@@ -335,10 +344,10 @@ public class PostService {
 
     public PostDTO getPost(Long postId, User currentUser) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
+                .orElseThrow(() -> new java.util.NoSuchElementException("Bài viết không tồn tại."));
         if (post.getUser().isLocked()) {
             if (currentUser == null || !"ROLE_ADMIN".equals(currentUser.getRole())) {
-                throw new RuntimeException("Bài viết này không khả dụng do tài khoản tác giả đã bị khóa.");
+                throw new IllegalArgumentException("Bài viết này không khả dụng do tài khoản tác giả đã bị khóa.");
             }
         }
         return convertToDTO(post, currentUser);

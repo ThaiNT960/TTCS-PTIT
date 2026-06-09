@@ -43,24 +43,7 @@ public class GroupController {
     @Autowired
     private com.ptit.socialchat.service.FileUploadService fileUploadService;
 
-    @PostMapping("/create")
-    public ResponseEntity<?> createGroup(@RequestBody Map<String, Object> request, Principal principal) {
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
-        User creator = userService.findByUsername(principal.getName()).orElseThrow();
-        
-        String name = (String) request.get("name");
-        String description = (String) request.get("description");
-        String category = (String) request.get("category");
-        String privacy = (String) request.getOrDefault("privacy", "PRIVATE");
-        List<String> usernames = (List<String>) request.get("usernames");
-        
-        if (name == null || name.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Tên nhóm không được để trống"));
-        }
-        
-        Conversation conv = groupService.createCommunityGroup(name, description, category, privacy, usernames, creator);
-        return ResponseEntity.ok(conv);
-    }
+
 
     @GetMapping("/search")
     public ResponseEntity<?> searchPublicGroups(
@@ -84,6 +67,7 @@ public class GroupController {
             map.put("category", g.getCategory());
             map.put("privacy", g.getPrivacy());
             map.put("memberCount", g.getMembers().size());
+            map.put("avatar", g.getAvatar());
             
             boolean isMember = false;
             boolean isPending = false;
@@ -103,7 +87,7 @@ public class GroupController {
     
     @PostMapping("/{id}/role")
     public ResponseEntity<?> changeRole(@PathVariable Long id, @RequestBody Map<String, String> request, Principal principal) {
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         User actor = userService.findByUsername(principal.getName()).orElseThrow();
         User targetUser = userService.findByUsername(request.get("targetUsername")).orElseThrow();
         String newRole = request.get("role"); // ADMIN, CO_ADMIN, MEMBER
@@ -119,7 +103,7 @@ public class GroupController {
     
     @PostMapping("/{id}/kick")
     public ResponseEntity<?> kickMember(@PathVariable Long id, @RequestBody Map<String, String> request, Principal principal) {
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         User actor = userService.findByUsername(principal.getName()).orElseThrow();
         User targetUser = userService.findByUsername(request.get("targetUsername")).orElseThrow();
         
@@ -134,12 +118,12 @@ public class GroupController {
     
     @PostMapping("/{id}/join")
     public ResponseEntity<?> joinGroup(@PathVariable Long id, Principal principal) {
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         User user = userService.findByUsername(principal.getName()).orElseThrow();
         Conversation conv = conversationRepository.findById(id).orElseThrow();
         
         if (memberRepository.findByConversationAndUser(conv, user).isPresent()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Bạn đã là thành viên của nhóm này"));
+            return ResponseEntity.badRequest().body(Map.of("error", "Bạn đã là thành viên của nhóm này."));
         }
         
         if ("PUBLIC".equals(conv.getPrivacy())) {
@@ -147,12 +131,13 @@ public class GroupController {
             member.setConversation(conv);
             member.setUser(user);
             member.setRole("MEMBER");
-            member.setJoinedAt(LocalDateTime.now());
+            member.setJoinedAt(LocalDateTime.of(1970, 1, 1, 0, 0));
             memberRepository.save(member);
+            groupService.sendSystemMessage(conv, user, "đã tham gia nhóm.");
             return ResponseEntity.ok(Map.of("status", "joined"));
         } else if ("REQUIRES_APPROVAL".equals(conv.getPrivacy())) {
             if (joinRequestRepository.findByConversationIdAndUserId(id, user.getId()).isPresent()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Bạn đã gửi yêu cầu tham gia rồi"));
+                return ResponseEntity.badRequest().body(Map.of("error", "Bạn đã gửi yêu cầu tham gia rồi."));
             }
             GroupJoinRequest req = new GroupJoinRequest();
             req.setConversation(conv);
@@ -161,18 +146,18 @@ public class GroupController {
             return ResponseEntity.ok(Map.of("status", "requested"));
         }
         
-        return ResponseEntity.badRequest().body(Map.of("error", "Không thể tham gia nhóm riêng tư"));
+        return ResponseEntity.badRequest().body(Map.of("error", "Không thể tham gia nhóm riêng tư."));
     }
     
     @GetMapping("/{id}/requests")
     public ResponseEntity<?> getJoinRequests(@PathVariable Long id, Principal principal) {
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         User user = userService.findByUsername(principal.getName()).orElseThrow();
         Conversation conv = conversationRepository.findById(id).orElseThrow();
         
         ConversationMember member = memberRepository.findByConversationAndUser(conv, user).orElseThrow();
         if (!"ADMIN".equals(member.getRole()) && !"CO_ADMIN".equals(member.getRole())) {
-            return ResponseEntity.status(403).body(Map.of("error", "Chỉ quản trị viên mới xem được yêu cầu"));
+            return ResponseEntity.status(403).body(Map.of("error", "Chỉ quản trị viên mới xem được yêu cầu."));
         }
         
         List<GroupJoinRequest> reqs = joinRequestRepository.findByConversationIdAndStatus(id, "PENDING");
@@ -192,16 +177,28 @@ public class GroupController {
     
     @PostMapping("/{id}/requests/{reqId}")
     public ResponseEntity<?> processJoinRequest(@PathVariable Long id, @PathVariable Long reqId, @RequestBody Map<String, String> request, Principal principal) {
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         User user = userService.findByUsername(principal.getName()).orElseThrow();
         Conversation conv = conversationRepository.findById(id).orElseThrow();
         
         ConversationMember member = memberRepository.findByConversationAndUser(conv, user).orElseThrow();
         if (!"ADMIN".equals(member.getRole()) && !"CO_ADMIN".equals(member.getRole())) {
-            return ResponseEntity.status(403).body(Map.of("error", "Chỉ quản trị viên mới được duyệt"));
+            return ResponseEntity.status(403).body(Map.of("error", "Chỉ quản trị viên mới được duyệt."));
         }
         
         GroupJoinRequest req = joinRequestRepository.findById(reqId).orElseThrow();
+        if (!req.getConversation().getId().equals(conv.getId())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Yêu cầu tham gia không thuộc về nhóm này."));
+        }
+        if (!"PENDING".equals(req.getStatus())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Yêu cầu tham gia này đã được xử lý từ trước."));
+        }
+        boolean alreadyMember = memberRepository.findByConversationAndUser(conv, req.getUser()).isPresent();
+        if (alreadyMember) {
+            req.setStatus("APPROVED");
+            joinRequestRepository.save(req);
+            return ResponseEntity.badRequest().body(Map.of("error", "Người dùng này đã là thành viên của nhóm."));
+        }
         String action = request.get("action"); // APPROVE or REJECT
         
         if ("APPROVE".equals(action)) {
@@ -209,41 +206,92 @@ public class GroupController {
             newMember.setConversation(conv);
             newMember.setUser(req.getUser());
             newMember.setRole("MEMBER");
-            newMember.setJoinedAt(LocalDateTime.now());
+            newMember.setJoinedAt(LocalDateTime.of(1970, 1, 1, 0, 0));
             memberRepository.save(newMember);
-            req.setStatus("APPROVED");
-        } else {
-            req.setStatus("REJECTED");
+            groupService.sendSystemMessage(conv, req.getUser(), "đã tham gia nhóm sau khi được phê duyệt.");
         }
-        joinRequestRepository.save(req);
+        joinRequestRepository.delete(req);
         
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
     
     @DeleteMapping("/{id}")
     public ResponseEntity<?> disbandGroup(@PathVariable Long id, Principal principal) {
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         User user = userService.findByUsername(principal.getName()).orElseThrow();
         Conversation conv = conversationRepository.findById(id).orElseThrow();
         
         ConversationMember member = memberRepository.findByConversationAndUser(conv, user).orElseThrow();
         if (!"ADMIN".equals(member.getRole())) {
-            return ResponseEntity.status(403).body(Map.of("error", "Chỉ trưởng nhóm mới có quyền giải tán nhóm"));
+            return ResponseEntity.status(403).body(Map.of("error", "Chỉ trưởng nhóm mới có quyền giải tán nhóm."));
         }
         
         groupService.disbandGroup(conv, user);
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
 
+    @PostMapping("/{id}/settings")
+    public ResponseEntity<?> updateSettings(@PathVariable Long id, @RequestBody Map<String, String> request, Principal principal) {
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        User actor = userService.findByUsername(principal.getName()).orElseThrow();
+        String privacy = request.get("privacy");
+        String category = request.get("category");
+        String description = request.get("description");
+        
+        Conversation conv = conversationRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Nhóm không tồn tại"));
+                
+        ConversationMember member = memberRepository.findByConversationAndUser(conv, actor)
+                .orElseThrow(() -> new IllegalArgumentException("Bạn không thuộc nhóm này"));
+                
+        if (!"ADMIN".equals(member.getRole()) && !"CO_ADMIN".equals(member.getRole())) {
+            return ResponseEntity.status(403).body(Map.of("error", "Chỉ quản trị viên mới có quyền cập nhật cài đặt nhóm."));
+        }
+        
+        if (privacy != null) {
+            if (!"PRIVATE".equals(privacy) && !"PUBLIC".equals(privacy) && !"REQUIRES_APPROVAL".equals(privacy)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Quyền riêng tư không hợp lệ."));
+            }
+            conv.setPrivacy(privacy);
+        }
+        if (category != null) {
+            conv.setCategory(category.trim());
+        }
+        if (description != null) {
+            conv.setDescription(description.trim());
+        }
+        
+        conversationRepository.save(conv);
+        
+        // Gửi tin nhắn hệ thống thông báo cập nhật cài đặt
+        groupService.sendSystemMessage(conv, actor, "đã cập nhật cài đặt của nhóm");
+        
+        // Phát tín hiệu cập nhật qua WebSocket
+        com.ptit.socialchat.dto.MessageDTO wsMsg = new com.ptit.socialchat.dto.MessageDTO();
+        wsMsg.setType("GROUP_UPDATED");
+        wsMsg.setConversationId(conv.getId());
+        wsMsg.setContent(conv.getName());
+        wsMsg.setFileUrl(conv.getAvatar());
+        messagingTemplate.convertAndSend("/topic/conversation/" + conv.getId(), wsMsg);
+        
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", conv.getId());
+        map.put("name", conv.getName());
+        map.put("privacy", conv.getPrivacy());
+        map.put("category", conv.getCategory());
+        map.put("description", conv.getDescription());
+        return ResponseEntity.ok(map);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<?> getGroupDetails(@PathVariable Long id, Principal principal) {
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         User user = userService.findByUsername(principal.getName()).orElseThrow();
         Conversation conv = conversationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Nhóm không tồn tại"));
                 
         if (memberRepository.findByConversationAndUser(conv, user).isEmpty()) {
-            return ResponseEntity.status(403).body(Map.of("error", "Bạn không phải là thành viên của nhóm này"));
+            return ResponseEntity.status(403).body(Map.of("error", "Bạn không phải là thành viên của nhóm này."));
         }
         
         Map<String, Object> map = new HashMap<>();
@@ -260,12 +308,12 @@ public class GroupController {
 
     @PostMapping("/{id}/rename")
     public ResponseEntity<?> renameGroup(@PathVariable Long id, @RequestBody Map<String, String> request, Principal principal) {
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         User actor = userService.findByUsername(principal.getName()).orElseThrow();
         String newName = request.get("name");
         
         if (newName == null || newName.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Tên nhóm không được để trống"));
+            return ResponseEntity.badRequest().body(Map.of("error", "Tên nhóm không được để trống."));
         }
         
         Conversation conv = conversationRepository.findById(id)
@@ -275,7 +323,7 @@ public class GroupController {
                 .orElseThrow(() -> new IllegalArgumentException("Bạn không thuộc nhóm này"));
                 
         if (!"ADMIN".equals(member.getRole()) && !"CO_ADMIN".equals(member.getRole())) {
-            return ResponseEntity.status(403).body(Map.of("error", "Chỉ quản trị viên mới có quyền đổi tên nhóm"));
+            return ResponseEntity.status(403).body(Map.of("error", "Chỉ quản trị viên mới có quyền đổi tên nhóm."));
         }
         
         conv.setName(newName.trim());
@@ -289,7 +337,7 @@ public class GroupController {
         wsMsg.setType("GROUP_UPDATED");
         wsMsg.setConversationId(conv.getId());
         wsMsg.setContent(conv.getName());
-        wsMsg.setImageUrl(conv.getAvatar());
+        wsMsg.setFileUrl(conv.getAvatar());
         messagingTemplate.convertAndSend("/topic/conversation/" + conv.getId(), wsMsg);
         
         return ResponseEntity.ok(Map.of("status", "ok", "name", conv.getName()));
@@ -301,7 +349,7 @@ public class GroupController {
             @RequestParam("imageFile") MultipartFile imageFile,
             Principal principal) throws Exception {
             
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         User actor = userService.findByUsername(principal.getName()).orElseThrow();
         Conversation conv = conversationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Nhóm không tồn tại"));
@@ -310,11 +358,11 @@ public class GroupController {
                 .orElseThrow(() -> new IllegalArgumentException("Bạn không thuộc nhóm này"));
                 
         if (!"ADMIN".equals(member.getRole()) && !"CO_ADMIN".equals(member.getRole())) {
-            return ResponseEntity.status(403).body(Map.of("error", "Chỉ quản trị viên mới được đổi ảnh nhóm"));
+            return ResponseEntity.status(403).body(Map.of("error", "Chỉ quản trị viên mới được đổi ảnh nhóm."));
         }
         
         if (imageFile.getSize() > 5 * 1024 * 1024) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Kích thước ảnh đại diện vượt quá 5MB"));
+            return ResponseEntity.badRequest().body(Map.of("error", "Kích thước ảnh đại diện vượt quá 5MB."));
         }
         
         String imageUrl = fileUploadService.saveFile(imageFile, "groups");
@@ -329,7 +377,7 @@ public class GroupController {
         wsMsg.setType("GROUP_UPDATED");
         wsMsg.setConversationId(conv.getId());
         wsMsg.setContent(conv.getName());
-        wsMsg.setImageUrl(imageUrl);
+        wsMsg.setFileUrl(imageUrl);
         messagingTemplate.convertAndSend("/topic/conversation/" + conv.getId(), wsMsg);
         
         return ResponseEntity.ok(Map.of("status", "ok", "avatar", imageUrl));

@@ -4,6 +4,7 @@ import com.ptit.socialchat.entity.*;
 import com.ptit.socialchat.service.DocumentService;
 import com.ptit.socialchat.service.UserService;
 import com.ptit.socialchat.repository.ConversationRepository;
+import com.ptit.socialchat.repository.ConversationMemberRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +29,9 @@ public class DocumentController {
     @Autowired
     private ConversationRepository conversationRepository;
 
+    @Autowired
+    private ConversationMemberRepository conversationMemberRepository;
+
     @PostMapping("/upload")
     public ResponseEntity<?> uploadDocument(
             @RequestParam("file") MultipartFile file,
@@ -38,13 +42,13 @@ public class DocumentController {
             @RequestParam("conversationId") Long conversationId,
             Principal principal) {
             
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         User user = userService.findByUsername(principal.getName()).orElseThrow();
         Conversation conv = conversationRepository.findById(conversationId).orElseThrow();
         
         // Giới hạn 50MB
         if (file.getSize() > 50 * 1024 * 1024) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Kích thước file vượt quá 50MB"));
+            return ResponseEntity.badRequest().body(Map.of("error", "Kích thước file vượt quá 50MB."));
         }
         
         try {
@@ -57,7 +61,18 @@ public class DocumentController {
 
     @GetMapping("/group/{id}")
     public ResponseEntity<?> getGroupDocuments(@PathVariable Long id, Principal principal) {
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        
+        User user = userService.findByUsername(principal.getName()).orElseThrow();
+        Conversation conv = conversationRepository.findById(id).orElse(null);
+        if (conv == null) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        boolean isMember = conversationMemberRepository.findByConversationAndUser(conv, user).isPresent();
+        if (!isMember) {
+            return ResponseEntity.status(403).body(Map.of("error", "Bạn không phải là thành viên nhóm này."));
+        }
         
         List<GroupDocument> docs = documentService.getDocumentsByGroup(id);
         List<Map<String, Object>> result = docs.stream().map(d -> {
@@ -80,14 +95,31 @@ public class DocumentController {
     }
     
     @PostMapping("/{id}/download")
-    public ResponseEntity<?> incrementDownload(@PathVariable Long id) {
-        documentService.incrementDownload(id);
-        return ResponseEntity.ok(Map.of("status", "ok"));
+    public ResponseEntity<?> incrementDownload(@PathVariable Long id, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(403).body(Map.of("error", "Bạn không phải thành viên nhóm này."));
+        }
+        User user = userService.findByUsername(principal.getName()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(403).body(Map.of("error", "Bạn không phải thành viên nhóm này."));
+        }
+        
+        try {
+            documentService.incrementDownload(id, user);
+            return ResponseEntity.ok(Map.of("status", "ok"));
+        } catch (IllegalArgumentException e) {
+            if (e.getMessage().contains("không phải thành viên")) {
+                return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+            }
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
     
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteDocument(@PathVariable Long id, Principal principal) {
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         User user = userService.findByUsername(principal.getName()).orElseThrow();
         
         try {
@@ -100,7 +132,7 @@ public class DocumentController {
     
     @PostMapping("/{id}/pin")
     public ResponseEntity<?> togglePin(@PathVariable Long id, Principal principal) {
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
+        if (principal == null) return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         User user = userService.findByUsername(principal.getName()).orElseThrow();
         
         try {

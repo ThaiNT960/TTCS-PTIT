@@ -27,10 +27,8 @@ public class AnnouncementService {
     }
 
     public Announcement save(String title, String content, String adminUsername) {
-        User admin = userRepository.findByUsername(adminUsername).orElse(null);
-        if (admin == null || !"ROLE_ADMIN".equals(admin.getRole())) {
-            throw new org.springframework.security.access.AccessDeniedException("Unauthorized or User not found");
-        }
+        User admin = userRepository.findByUsername(adminUsername)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản quản trị viên."));
 
         Announcement ann = new Announcement();
         ann.setTitle(title);
@@ -39,11 +37,7 @@ public class AnnouncementService {
         return announcementRepository.save(ann);
     }
 
-    public void deleteById(Long id, String adminUsername) {
-        User admin = userRepository.findByUsername(adminUsername).orElse(null);
-        if (admin == null || !"ROLE_ADMIN".equals(admin.getRole())) {
-            throw new org.springframework.security.access.AccessDeniedException("Unauthorized or User not found");
-        }
+    public void deleteById(Long id) {
         announcementRepository.deleteById(id);
     }
 }

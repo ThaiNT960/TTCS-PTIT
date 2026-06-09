@@ -2,6 +2,7 @@ var API_URL = window.location.origin + '/api';
 
 let currentUserObj = null;
 let allPostsData = [];
+let currentProfileData = null;
 
 const TAG_COLORS = {
     '#just-for-fun': 'text-blue-600 bg-blue-50 inline-block px-1.5 py-0.5 rounded-full',
@@ -57,12 +58,8 @@ function setNavAvatar(user) {
 
 async function loadProfileDynamic(viewer, targetUsername) {
     try {
-        const res = await fetch(`${API_URL}/users/profile/${encodeURIComponent(targetUsername)}`);
-        if (!res.ok) { 
-            document.querySelector('main').innerHTML = '<div class="max-w-4xl mx-auto mt-20 text-center text-gray-500">Người dùng không tồn tại hoặc đã bị xóa</div>';
-            return; 
-        }
-        const targetData = await res.json();
+        const targetData = await apiGet(`${API_URL}/users/profile/${encodeURIComponent(targetUsername)}`);
+        currentProfileData = targetData;
 
         // Basic Info
         const nameEl = document.getElementById('profileName');
@@ -118,8 +115,9 @@ async function loadProfileDynamic(viewer, targetUsername) {
 
         if (actionArea) {
             if (targetUsername === viewer.username) {
-                actionArea.innerHTML = `<button onclick="document.getElementById('editModal').classList.remove('hidden')" class="flex items-center gap-2 border border-gray-200 rounded-full px-5 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition shadow-sm"><i class="fas fa-pen"></i> Chỉnh sửa</button>`;
+                actionArea.innerHTML = `<button onclick="openEditModal()" class="flex items-center gap-2 border border-gray-200 rounded-full px-5 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition shadow-sm"><i class="fas fa-pen"></i> Chỉnh sửa</button>`;
                 document.getElementById('editFullName').value = targetData.fullName || '';
+                document.getElementById('editEmail').value = targetData.email || '';
                 document.getElementById('editBio').value = targetData.bio || '';
                 document.getElementById('editStudentId').value = targetData.studentId || '';
                 document.getElementById('editMajor').value = targetData.major || '';
@@ -130,7 +128,13 @@ async function loadProfileDynamic(viewer, targetUsername) {
                 renderStrangerActions(actionArea, targetData);
             }
         }
-    } catch(e) { console.error(e); }
+    } catch(e) { 
+        console.error(e); 
+        const mainEl = document.querySelector('main');
+        if (mainEl) {
+            mainEl.innerHTML = '<div class="max-w-4xl mx-auto mt-20 text-center text-gray-500">Người dùng không tồn tại hoặc đã bị xóa</div>';
+        }
+    }
 }
 
 function renderStrangerActions(container, targetData) {
@@ -150,19 +154,10 @@ function renderStrangerActions(container, targetData) {
 async function sendFriendRequest(targetUsername) {
     const user = checkAuth();
     try {
-        const res = await fetch(`${API_URL}/friends/request`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ receiverUsername: targetUsername })
-        });
-        if (res.ok) {
-            alert('Đã gửi lời mời kết bạn!');
-            loadProfileDynamic(user, targetUsername);
-        } else {
-            const errText = await res.text();
-            alert('Lỗi: ' + errText);
-        }
-    } catch(e) { console.error(e); alert('Lỗi kết nối.'); }
+        await apiPost(`${API_URL}/friends/request`, { receiverUsername: targetUsername });
+        alert('Đã gửi lời mời kết bạn!');
+        loadProfileDynamic(user, targetUsername);
+    } catch(e) { console.error(e); alert('Lỗi: ' + e.message); }
 }
 
 window.renderCommentsHtml = function(postId, comments, currentUserUsername, postOwnerUsername, isSystemAdmin) {
@@ -230,11 +225,7 @@ window.setReply = function(postId, commentId, name) {
 async function reactToComment(commentId, postId) {
     const user = checkAuth();
     try {
-        await fetch(`${API_URL}/posts/comments/${commentId}/reaction`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
-        });
+        await apiPost(`${API_URL}/posts/comments/${commentId}/reaction`, {});
         if (postId) {
             await refreshSinglePost(postId);
         } else {
@@ -265,8 +256,7 @@ async function loadPosts(viewer, targetUsername, append = false) {
     currentUserObj = viewer;
     try {
         if (!append) currentPage = 0;
-        const res = await fetch(`${API_URL}/posts/user/${encodeURIComponent(targetUsername)}?page=${currentPage}&size=10`);
-        const data = await res.json();
+        const data = await apiGet(`${API_URL}/posts/user/${encodeURIComponent(targetUsername)}?page=${currentPage}&size=10`);
         const userPosts = data.content || [];
         const container = document.getElementById('profilePosts');
         if (!container) return;
@@ -342,6 +332,22 @@ function renderPost(post, user, container) {
         }
     }
 
+    // Tính toán rút gọn nội dung nếu vượt quá 330 ký tự
+    const maxLen = 330;
+    let contentHtml = '';
+    if (post.content && post.content.length > maxLen) {
+        const shortContent = post.content.substring(0, maxLen);
+        contentHtml = `
+            <div id="post-content-wrap-${post.id}">
+                <p class="text-gray-800 text-sm leading-relaxed mb-3 post-short-content" style="white-space: pre-wrap;">${renderContent(shortContent)}...</p>
+                <p class="text-gray-800 text-sm leading-relaxed mb-3 post-full-content hidden" style="white-space: pre-wrap;">${renderContent(post.content)}</p>
+                <button onclick="togglePostContent(${post.id})" class="text-primary text-xs font-semibold hover:underline mt-[-8px] mb-3 block focus:outline-none">Xem thêm</button>
+            </div>
+        `;
+    } else {
+        contentHtml = `<p class="text-gray-800 text-sm leading-relaxed mb-3" style="white-space: pre-wrap;">${renderContent(post.content)}</p>`;
+    }
+
     const postContentHtml = `
         <div class="p-5 pb-0">
             <div class="flex items-center gap-3 mb-3">
@@ -357,7 +363,7 @@ function renderPost(post, user, container) {
                     <i class="fas fa-trash"></i>
                 </button>` : ''}
             </div>
-            <p class="text-gray-800 text-sm leading-relaxed mb-3" style="white-space: pre-wrap;">${renderContent(post.content)}</p>
+            ${contentHtml}
             ${post.imageUrl ? `
             <a href="${post.imageUrl}" target="_blank" class="block mb-3 hover:opacity-95 transition" title="Bấm để xem ảnh gốc">
                 <img src="${post.imageUrl}" alt="Post image" class="w-full rounded-xl max-h-96 object-cover" onerror="this.style.display='none'">
@@ -422,17 +428,14 @@ function renderPost(post, user, container) {
 async function refreshSinglePost(postId) {
     if (!currentUserObj) return;
     try {
-        const res = await fetch(`${API_URL}/posts/${postId}`);
-        if (res.ok) {
-            const post = await res.json();
-            const idx = allPostsData.findIndex(p => p.id === postId);
-            if (idx !== -1) {
-                allPostsData[idx] = post;
-            }
-            const container = document.getElementById('profilePosts');
-            if (container) {
-                renderPost(post, currentUserObj, container);
-            }
+        const post = await apiGet(`${API_URL}/posts/${postId}`);
+        const idx = allPostsData.findIndex(p => p.id === postId);
+        if (idx !== -1) {
+            allPostsData[idx] = post;
+        }
+        const container = document.getElementById('profilePosts');
+        if (container) {
+            renderPost(post, currentUserObj, container);
         }
     } catch (e) {
         console.error("Error refreshing post: ", e);
@@ -447,12 +450,7 @@ function toggleComments(postId) {
 async function reactToPost(postId, reactionType) {
     const user = checkAuth();
     try {
-        const res = await fetch(`${API_URL}/posts/${postId}/like`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reactionType: reactionType })
-        });
-        const data = await res.json();
+        const data = await apiPost(`${API_URL}/posts/${postId}/like`, { reactionType: reactionType });
         if (data.success || data.liked !== undefined) {
             await refreshSinglePost(postId);
         }
@@ -466,11 +464,7 @@ async function submitComment(postId) {
     const parentId = input.dataset.parentId || null;
     if (!content) return;
     try {
-        await fetch(`${API_URL}/posts/${postId}/comments`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content, parentId })
-        });
+        await apiPost(`${API_URL}/posts/${postId}/comments`, { content, parentId });
         input.value = '';
         delete input.dataset.parentId;
         input.placeholder = 'Viết bình luận...';
@@ -481,7 +475,7 @@ async function submitComment(postId) {
 async function deletePost(postId) {
     if (!confirm('Xóa bài viết này?')) return;
     try {
-        await fetch(`${API_URL}/posts/${postId}`, { method: 'DELETE' });
+        await apiDelete(`${API_URL}/posts/${postId}`);
         document.getElementById(`post-${postId}`).remove();
     } catch (e) { console.error(e); }
 }
@@ -489,16 +483,11 @@ async function deletePost(postId) {
 window.deleteComment = async function(commentId, postId) {
     if (!confirm('Bạn có chắc chắn muốn xóa bình luận này?')) return;
     try {
-        const res = await fetch(`${API_URL}/posts/comments/${commentId}`, { method: 'DELETE' });
-        if (res.ok) {
-            await refreshSinglePost(postId);
-        } else {
-            const err = await res.json();
-            alert(err.error || 'Lỗi khi xóa bình luận');
-        }
+        await apiDelete(`${API_URL}/posts/comments/${commentId}`);
+        await refreshSinglePost(postId);
     } catch (e) {
         console.error(e);
-        alert('Lỗi kết nối khi xóa bình luận');
+        alert(e.message || 'Lỗi kết nối khi xóa bình luận');
     }
 };
 
@@ -508,8 +497,7 @@ async function showReactionList(postId) {
     body.innerHTML = '<p class="text-center text-gray-400 text-sm">Đang tải...</p>';
     document.getElementById('usersModal').classList.remove('hidden');
     try {
-        const res = await fetch(`${API_URL}/posts/${postId}/reactions`);
-        const users = await res.json();
+        const users = await apiGet(`${API_URL}/posts/${postId}/reactions`);
         if(!users || users.length === 0) {
             body.innerHTML = '<p class="text-center text-gray-400 text-sm">Chưa có ai bày tỏ cảm xúc</p>';
             return;
@@ -536,12 +524,13 @@ async function uploadFile(fileInput, endpoint) {
     if (!fileInput.files || fileInput.files.length === 0) return null;
     const formData = new FormData();
     formData.append('imageFile', fileInput.files[0]);
-    const res = await fetch(`${API_URL}/upload/${endpoint}`, { method: 'POST', body: formData });
-    if (res.ok) {
-        const data = await res.json();
-        return data.imageUrl;
+    try {
+        const data = await apiPost(`${API_URL}/upload/${endpoint}`, formData);
+        return data ? data.imageUrl : null;
+    } catch (e) {
+        console.error('Lỗi tải tệp tin:', e);
+        return null;
     }
-    return null;
 }
 
 async function saveProfile() {
@@ -561,6 +550,7 @@ async function saveProfile() {
 
         const updateData = {
             fullName: document.getElementById('editFullName').value,
+            email: document.getElementById('editEmail').value,
             bio: document.getElementById('editBio').value,
             studentId: document.getElementById('editStudentId').value,
             major: document.getElementById('editMajor').value,
@@ -569,18 +559,10 @@ async function saveProfile() {
             coverPhoto: newCv || document.getElementById('editCoverUrl').value || ''
         };
 
-        const res = await fetch(`${API_URL}/users/profile`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updateData)
-        });
-
-        if (res.ok) {
-            const result = await res.json();
-            localStorage.setItem('user', JSON.stringify({ ...user, fullName: result.fullName, avatar: result.avatar }));
-            window.location.reload();
-        }
-    } catch (e) { console.error(e); alert('Lỗi kết nối'); }
+        const result = await apiPut(`${API_URL}/users/profile`, updateData);
+        localStorage.setItem('user', JSON.stringify({ ...user, fullName: result.fullName, avatar: result.avatar }));
+        window.location.reload();
+    } catch (e) { console.error(e); alert(e.message || 'Lỗi cập nhật hồ sơ'); }
     finally { btn.disabled = false; btn.textContent = 'Lưu thay đổi'; }
 }
 
@@ -615,8 +597,7 @@ window.switchTab = function(tabName) {
 
 async function loadProfileFriends(username) {
     try {
-        const res = await fetch(`${API_URL}/friends?username=${encodeURIComponent(username)}`);
-        const friends = await res.json();
+        const friends = await apiGet(`${API_URL}/friends?username=${encodeURIComponent(username)}`);
         
         const countEl = document.getElementById('profileFriendCount');
         if(countEl) countEl.textContent = friends.length;
@@ -648,4 +629,112 @@ async function loadProfileFriends(username) {
         document.getElementById('profileFriendsList').innerHTML = `<p class="text-red-400 text-sm col-span-2 text-center py-8">Lỗi tải danh sách bạn bè.</p>`;
     }
 }
+
+window.openChangePasswordModal = function() {
+    document.getElementById('changePasswordModal').classList.remove('hidden');
+};
+
+window.closeChangePasswordModal = function() {
+    document.getElementById('changePasswordModal').classList.add('hidden');
+    document.getElementById('oldPassword').value = '';
+    document.getElementById('newPassword').value = '';
+    document.getElementById('confirmPassword').value = '';
+    
+    ['oldPassword', 'newPassword', 'confirmPassword'].forEach(id => {
+        const input = document.getElementById(id);
+        const icon = document.getElementById('toggle-icon-' + id);
+        if (input && icon) {
+            input.type = 'password';
+            icon.className = 'far fa-eye-slash';
+        }
+    });
+};
+
+window.submitChangePassword = async function() {
+    const oldPassword = document.getElementById('oldPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    if (!oldPassword || !newPassword || !confirmPassword) {
+        alert('Vui lòng điền đầy đủ thông tin.');
+        return;
+    }
+    if (newPassword.length < 6) {
+        alert('Mật khẩu mới phải có ít nhất 6 ký tự.');
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        alert('Xác nhận mật khẩu mới không trùng khớp.');
+        return;
+    }
+
+    const btn = document.querySelector('#changePasswordModal button[onclick="submitChangePassword()"]');
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        await apiPost(`${API_URL}/users/change-password`, { oldPassword, newPassword });
+        alert('Đổi mật khẩu thành công!');
+        closeChangePasswordModal();
+    } catch (e) {
+        console.error(e);
+        alert(e.message || 'Lỗi kết nối.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Xác nhận';
+    }
+};
+
+window.togglePasswordVisibility = function(id) {
+    const input = document.getElementById(id);
+    const icon = document.getElementById('toggle-icon-' + id);
+    if (input && icon) {
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'far fa-eye';
+        } else {
+            input.type = 'password';
+            icon.className = 'far fa-eye-slash';
+        }
+    }
+};
+
+window.openEditModal = function() {
+    if (currentProfileData) {
+        document.getElementById('editFullName').value = currentProfileData.fullName || '';
+        document.getElementById('editEmail').value = currentProfileData.email || '';
+        document.getElementById('editBio').value = currentProfileData.bio || '';
+        document.getElementById('editStudentId').value = currentProfileData.studentId || '';
+        document.getElementById('editMajor').value = currentProfileData.major || '';
+        document.getElementById('editCampus').value = currentProfileData.campus || '';
+        document.getElementById('editAvatarUrl').value = currentProfileData.avatar || '';
+        document.getElementById('editCoverUrl').value = currentProfileData.coverPhoto || '';
+        
+        document.getElementById('editAvatarFile').value = '';
+        document.getElementById('editCoverFile').value = '';
+    }
+    document.getElementById('editModal').classList.remove('hidden');
+};
+
+window.closeEditModal = function() {
+    document.getElementById('editModal').classList.add('hidden');
+};
+
+window.togglePostContent = function(postId) {
+    const wrap = document.getElementById(`post-content-wrap-${postId}`);
+    if (!wrap) return;
+    const shortEl = wrap.querySelector('.post-short-content');
+    const fullEl = wrap.querySelector('.post-full-content');
+    const btn = wrap.querySelector('button');
+    
+    if (fullEl.classList.contains('hidden')) {
+        fullEl.classList.remove('hidden');
+        shortEl.classList.add('hidden');
+        btn.textContent = 'Thu gọn';
+    } else {
+        fullEl.classList.add('hidden');
+        shortEl.classList.remove('hidden');
+        btn.textContent = 'Xem thêm';
+    }
+};
 
