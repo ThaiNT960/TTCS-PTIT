@@ -1,0 +1,19 @@
+### Java / Maven ###
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### IDEs & Editors ###
+.idea/
+*.iml
+.vscode/
+*.swp
+.DS_Store
+.settings/
+.project
+.classpath
+
+### Runtime / Uploads / Logs ###
+uploads/
+*.log

@@ -27,7 +27,7 @@ public class ModerationSettings {
     
     @Builder.Default
     @Column(name = "ai_service_url")
-    private String aiServiceUrl = "http://localhost:8000";
+    private String aiServiceUrl = "http://localhost:8000"; // Sẽ được Admin thiết lập hoặc lấy từ mặc định
 }
 
 

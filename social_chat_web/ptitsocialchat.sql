@@ -1,3 +1,4 @@
+SET NAMES utf8mb4;
 DROP DATABASE IF EXISTS ptitsocialchat;
 
 CREATE DATABASE IF NOT EXISTS ptitsocialchat
@@ -29,7 +30,8 @@ CREATE TABLE users (
 INSERT INTO users (id, username, password, email, full_name, role, avatar, workplace, education, location) VALUES
 (1, 'vana', '$2a$10$ORNucSuHuZOl6Bdpn054gepjQCAv3bzhD5Yi/wMYJYKvwFiHi7312', 'vana@student.ptit.edu.vn', 'Nguyễn Văn A', 'ROLE_USER', NULL, 'B21DCCN001', 'Công nghệ thông tin', 'PTIT Hà Nội'),
 (2, 'thib', '$2a$10$ORNucSuHuZOl6Bdpn054gepjQCAv3bzhD5Yi/wMYJYKvwFiHi7312', 'thib@student.ptit.edu.vn', 'Trần Thị B', 'ROLE_USER', NULL, 'B21DCCN002', 'Công nghệ thông tin', 'PTIT Hà Nội'),
-(3, 'adminc', '$2a$10$ORNucSuHuZOl6Bdpn054gepjQCAv3bzhD5Yi/wMYJYKvwFiHi7312', 'adminc@ptit.edu.vn', 'Lê Văn C', 'ROLE_ADMIN', NULL, 'ADMIN', 'Quản trị', 'PTIT Hà Nội');
+(3, 'hoangd', '$2a$10$ORNucSuHuZOl6Bdpn054gepjQCAv3bzhD5Yi/wMYJYKvwFiHi7312', 'hoangd@student.ptit.edu.vn', 'Phạm Hoàng D', 'ROLE_USER', NULL, 'B21DCCN003', 'Công nghệ thông tin', 'PTIT Hà Nội'),
+(4, 'adminc', '$2a$10$ORNucSuHuZOl6Bdpn054gepjQCAv3bzhD5Yi/wMYJYKvwFiHi7312', 'adminc@ptit.edu.vn', 'Lê Văn C', 'ROLE_ADMIN', NULL, 'ADMIN', 'Quản trị', 'PTIT Hà Nội');
 
 -- ==========================================
 -- 2. BẢNG POSTS (Bài đăng)
@@ -208,11 +210,11 @@ CREATE TABLE messages (
 CREATE TABLE moderation_settings (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     mode VARCHAR(50) NOT NULL DEFAULT 'NONE',
-    ai_service_url VARCHAR(255) DEFAULT 'http://localhost:8000'
+    ai_service_url VARCHAR(255) DEFAULT 'http://ai-service:8000'
 ) ENGINE=InnoDB;
 
 INSERT INTO moderation_settings (id, mode, ai_service_url) VALUES
-(1, 'NONE', 'http://localhost:8000');
+(1, 'NONE', 'http://ai-service:8000');
 
 CREATE TABLE announcements (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,

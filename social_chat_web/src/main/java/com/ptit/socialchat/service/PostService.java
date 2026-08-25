@@ -39,6 +39,9 @@ public class PostService {
     @Autowired
     private com.ptit.socialchat.repository.CommentReactionRepository commentReactionRepository;
 
+    @org.springframework.beans.factory.annotation.Value("${ai.service.url:http://localhost:8000}")
+    private String defaultAiServiceUrl;
+
     /**
      * DTO chứa kết quả trả về sau khi tạo bài viết, bao gồm trạng thái kiểm duyệt
      */
@@ -75,7 +78,7 @@ public class PostService {
         post.setCreatedAt(LocalDateTime.now());
 
         String mode = "MANUAL";
-        String aiServiceUrl = "http://localhost:8000";
+        String aiServiceUrl = defaultAiServiceUrl;
         var settingsList = moderationSettingsRepository.findAll();
         if (!settingsList.isEmpty()) {
             mode = settingsList.get(0).getMode();

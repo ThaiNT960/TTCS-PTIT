@@ -122,6 +122,9 @@ public class AdminController {
     @Autowired
     private com.ptit.socialchat.repository.MessageRepository messageRepository;
 
+    @org.springframework.beans.factory.annotation.Value("${ai.service.url:http://localhost:8000}")
+    private String defaultAiServiceUrl;
+
     @GetMapping("/dashboard")
     public ResponseEntity<?> getDashboardStats() {
         List<User> allUsers = userService.findAll();
@@ -133,7 +136,7 @@ public class AdminController {
         long lockedUsersCount = allUsers.stream().filter(User::isLocked).count();
         
         String mode = "MANUAL";
-        String aiServiceUrl = "http://localhost:8000";
+        String aiServiceUrl = defaultAiServiceUrl;
         var settingsList = moderationSettingsRepository.findAll();
         if (!settingsList.isEmpty()) {
             mode = settingsList.get(0).getMode();
@@ -296,7 +299,7 @@ public class AdminController {
     @GetMapping("/moderation/ai-status")
     public ResponseEntity<?> checkAiStatus() {
         var settingsList = moderationSettingsRepository.findAll();
-        String aiServiceUrl = "http://localhost:8000";
+        String aiServiceUrl = defaultAiServiceUrl;
         if (!settingsList.isEmpty()) {
             aiServiceUrl = settingsList.get(0).getAiServiceUrl();
         }
