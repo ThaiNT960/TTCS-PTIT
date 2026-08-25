@@ -55,7 +55,7 @@ ptit-social-chat/
 ## 🌐 4. Truy Cập Hệ Thống
 
 Sau khi chạy lệnh thành công, mở trình duyệt và truy cập:
-👉 **[http://localhost:8080/login.html](http://localhost:8080/login.html)**
+ **[http://localhost:8080/login.html](http://localhost:8080/login.html)**
 
 ### 👥 Tài khoản thử nghiệm:
 > 🔑 **Mật khẩu chung cho tất cả tài khoản:** `password123`
