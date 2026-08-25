@@ -21,7 +21,7 @@ Do giới hạn dung lượng lưu trữ trên GitHub (mô hình AI và dataset)
 Đặt các thư mục và file từ Google Drive cùng cấp với `social_chat_web/`:
 
 ```text
-nhom 10/
+ptit-social-chat/
 ├── docker-compose.yml
 ├── social_chat_web/       # Ứng dụng chính (Frontend HTML/CSS/JS + Backend Spring Boot)
 ├── ai-service/            # Microservice AI kiểm duyệt nội dung (FastAPI)
