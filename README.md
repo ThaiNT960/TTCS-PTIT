@@ -32,15 +32,23 @@ nhom 10/
 
 ## 🚀 3. Cách Khởi Chạy Hệ Thống
 
+### Cách 1: Khởi chạy trọn bộ bằng Docker Compose (Khuyên dùng)
 1. Mở **Terminal / PowerShell** tại thư mục gốc chứa file `docker-compose.yml`.
-2. Chạy lệnh sau để bật toàn bộ dịch vụ (Web, AI, Database):
+2. Chạy lệnh:
    ```bash
    docker compose up -d --build
    ```
-3. Kiểm tra trạng thái các dịch vụ đang chạy:
-   ```bash
-   docker ps
-   ```
+
+### Cách 2: Khởi chạy Local (Không dùng Docker)
+1. **Database:** Tạo database `ptitsocialchat` trên MySQL và import file `ptitsocialchat.sql`.
+2. **Cấu hình:**
+   - Kiểm tra/sửa lại tài khoản, mật khẩu MySQL trong file `.env` nếu khác `root`/`123456`.
+   - Điền thông tin kết nối DB (URL, Username, Password) vào file `src/main/resources/application.properties`.
+3. **AI Service:** Vào thư mục `ai-service` chạy `uvicorn main:app --port 8000 --reload`.
+4. **Web Backend:** Vào thư mục `social_chat_web` chạy:
+   - Windows: `.\mvnw.cmd spring-boot:run`
+   - Linux/macOS: `./mvnw spring-boot:run`
+   *(Hoặc chạy trực tiếp file `SocialchatApplication.java` trong IDE)*.
 
 ---
 
